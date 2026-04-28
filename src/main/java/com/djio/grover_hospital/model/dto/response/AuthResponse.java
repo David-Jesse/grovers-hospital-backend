@@ -17,14 +17,15 @@ public class AuthResponse {
     private Role role;
     private String fullName;
     private String email;
+    private Long accessExpirationMs;
 
-    public AuthResponse(String accessToken, String refreshToken, String tokenType, long expiresIn,
-                            Role role, String fullName, String email
+    public AuthResponse(String accessToken, String refreshToken, long accessExpirationMs, Role role,
+                        String fullName, String email
     ) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
-        this.tokenType = tokenType;
-        this.expiresIn = expiresIn;
+        this.tokenType = "Bearer";
+        this.accessExpirationMs = accessExpirationMs;
         this.role = role;
         this.fullName = fullName;
         this.email = email;
