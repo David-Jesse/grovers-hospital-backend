@@ -18,16 +18,4 @@ public class AuthResponse {
     private String fullName;
     private String email;
     private Long accessExpirationMs;
-
-    public AuthResponse(String accessToken, String refreshToken, long accessExpirationMs, Role role,
-                        String fullName, String email
-    ) {
-        this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
-        this.tokenType = "Bearer";
-        this.accessExpirationMs = accessExpirationMs;
-        this.role = role;
-        this.fullName = fullName;
-        this.email = email;
-    }
 }

@@ -27,7 +27,7 @@ public class AccessLog {
     private Long id;
 
     @Column(name = "user_id", nullable = false)
-    private String userId;
+    private Long userId;
 
     @Column(name = "user_type", nullable = false, length = 20)
     private String userType;

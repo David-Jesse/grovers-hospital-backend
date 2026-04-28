@@ -73,7 +73,7 @@ public class AuthService {
     }
 
     public AuthResponse loginAdmin(LoginRequest request) {
-        Admin admin = adminRepository.findbyEmail(request.getEmail().toLowerCase().trim())
+        Admin admin = adminRepository.findByEmail(request.getEmail().toLowerCase().trim())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash())) {
@@ -116,13 +116,13 @@ public class AuthService {
         String accessToken = tokenProvider.generateAccessToken(userId, email, role);
         String refreshToken = tokenProvider.generateRefreshToken(userId, email, role);
 
-        return new AuthResponse(
-                accessToken,
-                refreshToken,
-                tokenProvider.getAccessExpirationMs(),
-                role,
-                fullName,
-                email
-        );
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .expiresIn(tokenProvider.getAccessExpirationMs())
+                .role(role)
+                .fullName(fullName)
+                .email(email)
+                .build();
     }
 }

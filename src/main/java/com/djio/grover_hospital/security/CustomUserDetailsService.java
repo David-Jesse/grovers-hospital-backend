@@ -16,7 +16,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class CustomerUserDetailsService implements UserDetailsService {
+public class CustomUserDetailsService implements UserDetailsService {
 
     private final PatientRepository patientRepository;
     private final AdminRepository adminRepository;
@@ -36,7 +36,7 @@ public class CustomerUserDetailsService implements UserDetailsService {
             );
         }
 
-        Admin admin = adminRepository.findbyEmail(email)
+        Admin admin = adminRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         return new UserPrincipal(
