@@ -21,7 +21,7 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
             SELECT p FROM Promotion p
             WHERE p.isActive = true
             AND (p.startsAt IS NULL OR p.startsAt <= :now)
-            AND (p.endsAt IS NULL OR p.endsAT >= :now)
+            AND (p.endsAt IS NULL OR p.endsAt >= :now)
             ORDER BY p.displayOrder ASC
             """)
     List<Promotion> findCurrentlyActive(@Param("now")OffsetDateTime now);

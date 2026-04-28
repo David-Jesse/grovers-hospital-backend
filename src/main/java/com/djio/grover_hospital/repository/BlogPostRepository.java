@@ -14,11 +14,11 @@ public interface BlogPostRepository extends JpaRepository<BlogPost, Long> {
 
     Optional<BlogPost> findBySlug(String slug);
 
-    Optional<BlogPost> findBySLugAndIsPublishedTrue(String slug);
+    Optional<BlogPost> findBySlugAndIsPublishedTrue(String slug);
 
     Page<BlogPost> findByIsPublishedTrueOrderByPublishedAtDesc(Pageable pageable);
 
-    Page<BlogPost> findByIsPublishedTrueAndTagsContainingIgnoreCaseOrderByPublishedDesc(String tag, Pageable pageable);
+    Page<BlogPost> findByIsPublishedTrueAndTagsContainingIgnoreCaseOrderByPublishedAtDesc(String tag, Pageable pageable);
 
     boolean existsBySlug(String slug);
 }
