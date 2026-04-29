@@ -2,26 +2,25 @@ package com.djio.grover_hospital.controller;
 
 
 import com.djio.grover_hospital.model.dto.response.ApiResponse;
-import com.djio.grover_hospital.model.dto.response.PromotionResponse;
-import com.djio.grover_hospital.service.PromotionService;
+import com.djio.grover_hospital.model.dto.response.TestimonialResponse;
+import com.djio.grover_hospital.service.TestimonialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.w3c.dom.stylesheets.LinkStyle;
 
 import java.util.List;
 
 @RestController
-@RequestMapping
+@RequestMapping("/testimonials")
 @RequiredArgsConstructor
-public class PromotionController {
+public class TestimonialController {
 
-    private final PromotionService promotionService;
+    private final TestimonialService testimonialService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PromotionResponse>>> getActivePromotions() {
-        return ResponseEntity.ok(ApiResponse.success(promotionService.getCurrentlyActive()));
+    public ResponseEntity<ApiResponse<List<TestimonialResponse>>> getApprovedTestimonials() {
+        return ResponseEntity.ok(ApiResponse.success(testimonialService.getAllApproved()));
     }
 }
