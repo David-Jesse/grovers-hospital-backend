@@ -1,4 +1,4 @@
-package com.djio.grover_hospital.model.dto.request;
+package com.djio.grover_hospital.model.dto.response;
 
 
 import lombok.AllArgsConstructor;
