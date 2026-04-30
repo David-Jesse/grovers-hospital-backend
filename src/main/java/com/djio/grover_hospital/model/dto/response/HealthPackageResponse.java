@@ -32,8 +32,6 @@ public class HealthPackageResponse {
                 .name(healthPackage.getName())
                 .slug(healthPackage.getSlug())
                 .description(healthPackage.getDescription())
-                .inclusions(healthPackage.getInclusions())
-                .price(healthPackage.getPrice())
                 .departmentId(healthPackage.getDepartment() != null ? healthPackage.getDepartment().getId() : null)
                 .departmentName(healthPackage.getDepartment() != null ? healthPackage.getDepartment().getName() : null)
                 .displayOrder(healthPackage.getDisplayOrder())

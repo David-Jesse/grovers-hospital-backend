@@ -25,7 +25,7 @@ public class ConsultantSchedule {
     @JoinColumn(name = "department_id", nullable = false)
     private Department department;
 
-    @Column(name = "consultant_name", nullable = false, length = 200)
+    @Column(name = "consultant_name", length = 200)
     private String consultantName;
 
     /**

@@ -25,7 +25,7 @@ public class BlogController {
         return ResponseEntity.ok(ApiResponse.success(blogService.getPublishedPosts(pageable, tag)));
     }
 
-    @GetMapping
+    @GetMapping("/{slug}")
     public ResponseEntity<ApiResponse<BlogPostResponse>> getPostsBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(ApiResponse.success(blogService.getPublishedPostsBySlug(slug)));
     }
