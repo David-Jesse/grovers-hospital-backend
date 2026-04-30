@@ -36,7 +36,7 @@ public class BlogPostResponse {
         return baseBuilder(post).build();
     }
 
-    public static BlogPostResponse fromDetails(BlogPost post) {
+    public static BlogPostResponse fromDetail(BlogPost post) {
         return baseBuilder(post)
                 .content(post.getContent())
                 .build();

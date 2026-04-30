@@ -1,6 +1,7 @@
 package com.djio.grover_hospital.model.dto.request;
 
 
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -17,6 +18,10 @@ public class BlogPostRequest {
 
     @NotBlank(message = "Content is required")
     private String content;
+
+    @Column(name = "featured_image", length = 500)
+    private String featuredImage;
+
 
     @Size(max = 500)
     private String tags;
