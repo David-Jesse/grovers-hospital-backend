@@ -1,0 +1,18 @@
+package com.djio.grover_hospital.model.dto.request;
+
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ImageUploadResponse {
+
+    private String url;
+    private String fileName;
+    private Long size;
+}
