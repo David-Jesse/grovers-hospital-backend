@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping
+@RequestMapping("/admin/packages")
 @RequiredArgsConstructor
 public class AdminPackageController {
 
