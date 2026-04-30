@@ -54,6 +54,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/blog/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/team/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/testimonials/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
 
                         // Public POST - feedback form on homepage
                         .requestMatchers(HttpMethod.POST, "/feedback").permitAll()
