@@ -6,12 +6,11 @@ import com.djio.grover_hospital.model.dto.request.TestimonialRequest;
 import com.djio.grover_hospital.model.dto.response.TestimonialResponse;
 import com.djio.grover_hospital.model.entity.Testimonial;
 import com.djio.grover_hospital.repository.TestimonialRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.Response;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.ResourceAccessException;
 
 import java.util.List;
 
@@ -54,7 +53,7 @@ public class TestimonialService {
     }
 
     @Transactional
-    public TestimonialResponse update(Long id, Testimonial request) {
+    public TestimonialResponse update(Long id, @Valid TestimonialRequest request) {
         Testimonial testimonial = testimonialRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Testimonial", "id", id));
 
