@@ -4,14 +4,13 @@ import com.djio.grover_hospital.model.entity.Booking;
 import com.djio.grover_hospital.model.entity.Patient;
 
 /**
- * High-level notification service used by business Logic
- * Each Method represents a business event and internally decides
- * which channels to dispatch through
-
- * Business code never thinks about channels directly - it just
- * fires the event and trusts the notification layer to handle delivery
+ * High-level notification service used by business logic.
+ * Each method represents a business event and internally decides
+ * which channels (email, SMS, WhatsApp) to dispatch through.
+ *
+ * Business code never thinks about channels directly — it just
+ * fires the event and trusts the notification layer to handle delivery.
  */
-
 public interface NotificationService {
 
     void notifyBookingConfirmationToPatient(Booking booking);
@@ -20,5 +19,7 @@ public interface NotificationService {
 
     void notifyBookingStatusUpdateToPatient(Booking booking);
 
-    void notifyResultBody(Patient patient, String resultTitle);
+    void notifyResultReady(Patient patient, String resultTitle);
+
+    void notifyPasswordResetLink(Patient patient, String resetToken);
 }
