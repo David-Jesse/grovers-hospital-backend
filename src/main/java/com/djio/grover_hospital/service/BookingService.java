@@ -152,7 +152,7 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", id));
 
         BookingStatus oldStatus = booking.getStatus();
-        BookingStatus newStatus = booking.getStatus();
+        BookingStatus newStatus = request.getStatus();
 
         if (oldStatus == newStatus) {
             throw new BadRequestException("Booking is already " + newStatus);
