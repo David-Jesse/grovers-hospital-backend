@@ -12,7 +12,7 @@ import java.time.OffsetDateTime;
  * with the master key (envelope encryption).
  */
 @Entity
-@Table(name = "result_files")
+@Table(name = "results_files")
 @Getter
 @Setter
 @NoArgsConstructor
