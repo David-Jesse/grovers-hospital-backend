@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import com.djio.grover_hospital.model.entity.Feedback;
+import com.djio.grover_hospital.model.enums.FeedbackSource;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -20,9 +22,9 @@ import java.util.List;
 /**
  * Orchestrates which channels each business event is sent through.
  * Each `notify*` method:
- *   1. Builds channel-appropriate content (email is verbose, SMS is short, etc.)
- *   2. Dispatches to the senders for the channels enabled for that event
-
+ * 1. Builds channel-appropriate content (email is verbose, SMS is short, etc.)
+ * 2. Dispatches to the senders for the channels enabled for that event
+ * <p>
  * All sends are @Async so a slow provider never blocks a user request.
  */
 @Service
@@ -206,14 +208,14 @@ public class DefaultNotificationService implements NotificationService {
                 .subject("Reset your password")
                 .textBody("""
                         Hello %s,
-
+                        
                         A password reset was requested for your account. Use the link below
                         to set a new password. This link expires in 30 minutes.
-
+                        
                         Reset token: %s
-
+                        
                         If you didn't request this, you can safely ignore this email.
-
+                        
                         — %s
                         """.formatted(patient.getFirstName(), resetToken, hospitalName))
                 .build()));
@@ -225,20 +227,20 @@ public class DefaultNotificationService implements NotificationService {
         Patient p = booking.getPatient();
         return """
                 Hello %s,
-
+                
                 Thank you for booking with %s. We have received your request.
-
+                
                 Booking ID:      #%d
                 Type:            %s
                 %s
                 Preferred date:  %s
                 Status:          PENDING
-
+                
                 A member of our team will reach out to you shortly to confirm
                 the time and any final details.
-
+                
                 If you have any questions, contact us at %s.
-
+                
                 — %s
                 """.formatted(
                 p.getFirstName(), hospitalName, booking.getId(),
@@ -256,7 +258,7 @@ public class DefaultNotificationService implements NotificationService {
         Patient p = booking.getPatient();
         return """
                 A new booking has been submitted.
-
+                
                 Booking ID:      #%d
                 Patient:         %s %s
                 Patient email:   %s
@@ -265,7 +267,7 @@ public class DefaultNotificationService implements NotificationService {
                 %s
                 Preferred date:  %s
                 Patient notes:   %s
-
+                
                 Please log in to the admin dashboard to confirm or follow up.
                 """.formatted(
                 booking.getId(), p.getFirstName(), p.getLastName(),
@@ -285,16 +287,16 @@ public class DefaultNotificationService implements NotificationService {
         };
         return """
                 Hello %s,
-
+                
                 %s
-
+                
                 Booking ID:      #%d
                 %s
                 Preferred date:  %s
                 Status:          %s
-
+                
                 For any questions, contact us at %s.
-
+                
                 — %s
                 """.formatted(
                 p.getFirstName(), statusMessage, booking.getId(),
@@ -307,17 +309,54 @@ public class DefaultNotificationService implements NotificationService {
                 " is now " + booking.getStatus().name() + ". — " + hospitalName;
     }
 
+
+    @Async
+    public void notifyFeedbackReceived(Feedback feedback) {
+        String sourceLabel = feedback.getSource() == FeedbackSource.PORTAL
+                ? "Patient Portal" : "Homepage Form";
+
+        String text = """
+                New feedback received from the %s.
+                
+                From:     %s
+                Email:    %s
+                Subject:  %s
+                
+                Message:
+                %s
+                
+                ─────────────────────────────────────
+                View and respond in the admin dashboard.
+                """.formatted(
+                sourceLabel,
+                feedback.getName() != null ? feedback.getName() : "(anonymous)",
+                feedback.getEmail() != null ? feedback.getEmail() : "(no email)",
+                feedback.getSubject() != null && !feedback.getSubject().isBlank()
+                        ? feedback.getSubject() : "(no subject)",
+                feedback.getMessage()
+        );
+
+        sendSafely("feedback-received-email", () -> emailSender.send(EmailMessage.builder()
+                .to(hospitalEmail)
+                .subject("New Feedback — " + sourceLabel +
+                        (feedback.getSubject() != null && !feedback.getSubject().isBlank()
+                                ? " — " + feedback.getSubject() : ""))
+                .textBody(text)
+                .build()));
+    }
+
+
     private String buildResultReadyEmailBody(Patient patient, String resultTitle) {
         return """
                 Hello %s,
-
+                
                 Your medical result is now available in your patient portal:
-
+                
                   "%s"
-
+                
                 Please log in to view it. For questions about your result,
                 contact us at %s.
-
+                
                 — %s
                 """.formatted(patient.getFirstName(), resultTitle, contactPhone, hospitalName);
     }
@@ -340,7 +379,9 @@ public class DefaultNotificationService implements NotificationService {
         return patient.getPhone() != null && !patient.getPhone().isBlank();
     }
 
-    /** Wraps a send call so that a single channel failure never bubbles up to the caller. */
+    /**
+     * Wraps a send call so that a single channel failure never bubbles up to the caller.
+     */
     private void sendSafely(String label, Runnable sendAction) {
         try {
             sendAction.run();
