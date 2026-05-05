@@ -20,7 +20,7 @@ import java.util.Base64;
 
 /**
  * AES-256-GCM envelope encryption for patient result files.
- *
+
  * Architecture:
  *   - Master key: from app.encryption.master-key env variable (NEVER in DB or code)
  *   - Each file gets a unique data encryption key (DEK)
