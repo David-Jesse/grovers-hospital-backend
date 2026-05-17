@@ -1,7 +1,12 @@
 package com.djio.grover_hospital.service.notification;
 
 import com.djio.grover_hospital.model.entity.Booking;
+import com.djio.grover_hospital.model.entity.Feedback;
 import com.djio.grover_hospital.model.entity.Patient;
+import com.djio.grover_hospital.model.enums.BookingStatus;
+import com.djio.grover_hospital.model.enums.FeedbackSource;
+import com.djio.grover_hospital.model.enums.PortalNotificationType;
+import com.djio.grover_hospital.service.PortalNotificationService;
 import com.djio.grover_hospital.service.notification.channel.EmailMessage;
 import com.djio.grover_hospital.service.notification.channel.SmsMessage;
 import com.djio.grover_hospital.service.notification.channel.WhatsappMessage;
@@ -13,19 +18,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import com.djio.grover_hospital.model.entity.Feedback;
-import com.djio.grover_hospital.model.enums.FeedbackSource;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Orchestrates which channels each business event is sent through.
- * Each `notify*` method:
- * 1. Builds channel-appropriate content (email is verbose, SMS is short, etc.)
- * 2. Dispatches to the senders for the channels enabled for that event
- * <p>
- * All sends are @Async so a slow provider never blocks a user request.
+ * Orchestrates external channels (email / SMS / WhatsApp) AND drops a record
+ * into the in-portal notification table for the bell-icon UI.
+
+ * Each notify* method does up to four things:
+ *   1. Build channel-appropriate content
+ *   2. Dispatch to external senders (per the channel toggle config)
+ *   3. Create an in-portal Notification entry for the recipient(s)
+ *   4. Wrap every channel in sendSafely so one failure doesn't poison the others
  */
 @Service
 @RequiredArgsConstructor
@@ -37,6 +42,7 @@ public class DefaultNotificationService implements NotificationService {
     private final EmailSender emailSender;
     private final SmsSender smsSender;
     private final WhatsappSender whatsappSender;
+    private final PortalNotificationService portalNotificationService;
 
     @Value("${app.hospital.name:Grover's Hospital}")
     private String hospitalName;
@@ -50,7 +56,7 @@ public class DefaultNotificationService implements NotificationService {
     @Value("${app.hospital.contact-phone:+234 ___ ___ ____}")
     private String contactPhone;
 
-    // Per-event channel toggles — let admin disable specific channels in properties without code changes
+    // Channel toggles per event
     @Value("${app.notification.events.booking-confirmation.email:true}")
     private boolean bookingConfirmEmail;
     @Value("${app.notification.events.booking-confirmation.sms:false}")
@@ -106,6 +112,13 @@ public class DefaultNotificationService implements NotificationService {
                     .text(buildBookingConfirmationSmsText(booking))
                     .build()));
         }
+
+        // In-portal notification
+        sendSafely("booking-confirm-portal", () -> portalNotificationService.createForPatient(
+                patient.getId(),
+                PortalNotificationType.BOOKING_RECEIVED,
+                String.format("Your booking #%d for %s has been received. We'll contact you to confirm the time.",
+                        booking.getId(), booking.getPreferredDate().format(DATE_FMT))));
     }
 
     // ===== Booking alert to hospital =====
@@ -121,7 +134,6 @@ public class DefaultNotificationService implements NotificationService {
                 .textBody(buildBookingAlertEmailBody(booking))
                 .build()));
 
-        // Optional: also SMS the hospital line if configured
         if (hospitalPhone != null && !hospitalPhone.isBlank()) {
             sendSafely("booking-alert-sms", () -> smsSender.send(SmsMessage.builder()
                     .toPhoneNumber(hospitalPhone)
@@ -130,6 +142,14 @@ public class DefaultNotificationService implements NotificationService {
                             " for " + booking.getPreferredDate().format(DATE_FMT) + ".")
                     .build()));
         }
+
+        // In-portal alert to all admins
+        sendSafely("booking-alert-portal", () -> portalNotificationService.createForAllAdmins(
+                PortalNotificationType.NEW_BOOKING_ALERT,
+                String.format("New booking #%d from %s %s for %s — review in the bookings dashboard.",
+                        booking.getId(),
+                        patient.getFirstName(), patient.getLastName(),
+                        booking.getPreferredDate().format(DATE_FMT))));
     }
 
     // ===== Booking status update to patient =====
@@ -166,12 +186,19 @@ public class DefaultNotificationService implements NotificationService {
                     .text(buildStatusUpdateShortText(booking))
                     .build()));
         }
+
+        // In-portal notification — pick type based on status
+        PortalNotificationType portalType = mapStatusToPortalType(booking.getStatus());
+        sendSafely("booking-status-portal", () -> portalNotificationService.createForPatient(
+                patient.getId(),
+                portalType,
+                buildStatusUpdatePortalMessage(booking)));
     }
 
     // ===== Result ready notification =====
 
-    @Async
     @Override
+    @Async
     public void notifyResultReady(Patient patient, String resultTitle) {
         if (resultReadyEmail) {
             sendSafely("result-ready-email", () -> emailSender.send(EmailMessage.builder()
@@ -196,29 +223,84 @@ public class DefaultNotificationService implements NotificationService {
                     .text("Hi " + patient.getFirstName() + ", your result \"" + resultTitle + "\" is ready in your portal.")
                     .build()));
         }
+
+        // In-portal notification
+        sendSafely("result-ready-portal", () -> portalNotificationService.createForPatient(
+                patient.getId(),
+                PortalNotificationType.RESULT_READY,
+                String.format("Your result \"%s\" is ready to view in your portal.", resultTitle)));
     }
 
     // ===== Password reset (email only — security best practice) =====
 
-    @Async
     @Override
+    @Async
     public void notifyPasswordResetLink(Patient patient, String resetToken) {
         sendSafely("password-reset-email", () -> emailSender.send(EmailMessage.builder()
                 .to(patient.getEmail())
                 .subject("Reset your password")
                 .textBody("""
                         Hello %s,
-                        
+
                         A password reset was requested for your account. Use the link below
                         to set a new password. This link expires in 30 minutes.
-                        
+
                         Reset token: %s
-                        
+
                         If you didn't request this, you can safely ignore this email.
-                        
+
                         — %s
                         """.formatted(patient.getFirstName(), resetToken, hospitalName))
                 .build()));
+
+        // Intentionally NO in-portal notification — password reset doesn't need a UI badge,
+        // and dropping the token into a notification record would weaken security.
+    }
+
+    // ===== Feedback received (admin alert) =====
+
+    @Override
+    @Async
+    public void notifyFeedbackReceived(Feedback feedback) {
+        String sourceLabel = feedback.getSource() == FeedbackSource.PORTAL
+                ? "Patient Portal" : "Homepage Form";
+
+        String text = """
+                New feedback received from the %s.
+
+                From:     %s
+                Email:    %s
+                Subject:  %s
+
+                Message:
+                %s
+
+                ─────────────────────────────────────
+                View and respond in the admin dashboard.
+                """.formatted(
+                sourceLabel,
+                feedback.getName() != null ? feedback.getName() : "(anonymous)",
+                feedback.getEmail() != null ? feedback.getEmail() : "(no email)",
+                feedback.getSubject() != null && !feedback.getSubject().isBlank()
+                        ? feedback.getSubject() : "(no subject)",
+                feedback.getMessage()
+        );
+
+        sendSafely("feedback-received-email", () -> emailSender.send(EmailMessage.builder()
+                .to(hospitalEmail)
+                .subject("New Feedback — " + sourceLabel +
+                        (feedback.getSubject() != null && !feedback.getSubject().isBlank()
+                                ? " — " + feedback.getSubject() : ""))
+                .textBody(text)
+                .build()));
+
+        // In-portal alert to all admins
+        sendSafely("feedback-received-portal", () -> portalNotificationService.createForAllAdmins(
+                PortalNotificationType.NEW_FEEDBACK_ALERT,
+                String.format("New feedback from %s via %s — \"%s\"",
+                        feedback.getName() != null ? feedback.getName() : "anonymous",
+                        sourceLabel,
+                        truncate(feedback.getMessage(), 100))));
     }
 
     // ===== Content builders =====
@@ -227,20 +309,20 @@ public class DefaultNotificationService implements NotificationService {
         Patient p = booking.getPatient();
         return """
                 Hello %s,
-                
+
                 Thank you for booking with %s. We have received your request.
-                
+
                 Booking ID:      #%d
                 Type:            %s
                 %s
                 Preferred date:  %s
                 Status:          PENDING
-                
+
                 A member of our team will reach out to you shortly to confirm
                 the time and any final details.
-                
+
                 If you have any questions, contact us at %s.
-                
+
                 — %s
                 """.formatted(
                 p.getFirstName(), hospitalName, booking.getId(),
@@ -258,7 +340,7 @@ public class DefaultNotificationService implements NotificationService {
         Patient p = booking.getPatient();
         return """
                 A new booking has been submitted.
-                
+
                 Booking ID:      #%d
                 Patient:         %s %s
                 Patient email:   %s
@@ -267,7 +349,7 @@ public class DefaultNotificationService implements NotificationService {
                 %s
                 Preferred date:  %s
                 Patient notes:   %s
-                
+
                 Please log in to the admin dashboard to confirm or follow up.
                 """.formatted(
                 booking.getId(), p.getFirstName(), p.getLastName(),
@@ -287,16 +369,16 @@ public class DefaultNotificationService implements NotificationService {
         };
         return """
                 Hello %s,
-                
+
                 %s
-                
+
                 Booking ID:      #%d
                 %s
                 Preferred date:  %s
                 Status:          %s
-                
+
                 For any questions, contact us at %s.
-                
+
                 — %s
                 """.formatted(
                 p.getFirstName(), statusMessage, booking.getId(),
@@ -309,54 +391,35 @@ public class DefaultNotificationService implements NotificationService {
                 " is now " + booking.getStatus().name() + ". — " + hospitalName;
     }
 
-
-    @Async
-    public void notifyFeedbackReceived(Feedback feedback) {
-        String sourceLabel = feedback.getSource() == FeedbackSource.PORTAL
-                ? "Patient Portal" : "Homepage Form";
-
-        String text = """
-                New feedback received from the %s.
-                
-                From:     %s
-                Email:    %s
-                Subject:  %s
-                
-                Message:
-                %s
-                
-                ─────────────────────────────────────
-                View and respond in the admin dashboard.
-                """.formatted(
-                sourceLabel,
-                feedback.getName() != null ? feedback.getName() : "(anonymous)",
-                feedback.getEmail() != null ? feedback.getEmail() : "(no email)",
-                feedback.getSubject() != null && !feedback.getSubject().isBlank()
-                        ? feedback.getSubject() : "(no subject)",
-                feedback.getMessage()
-        );
-
-        sendSafely("feedback-received-email", () -> emailSender.send(EmailMessage.builder()
-                .to(hospitalEmail)
-                .subject("New Feedback — " + sourceLabel +
-                        (feedback.getSubject() != null && !feedback.getSubject().isBlank()
-                                ? " — " + feedback.getSubject() : ""))
-                .textBody(text)
-                .build()));
+    private String buildStatusUpdatePortalMessage(Booking booking) {
+        return switch (booking.getStatus()) {
+            case CONFIRMED -> String.format("Your booking #%d has been confirmed for %s.",
+                    booking.getId(), booking.getPreferredDate().format(DATE_FMT));
+            case CANCELLED -> String.format("Your booking #%d has been cancelled.", booking.getId());
+            case COMPLETED -> String.format("Your booking #%d has been marked as completed.", booking.getId());
+            default -> String.format("Your booking #%d has been updated.", booking.getId());
+        };
     }
 
+    private PortalNotificationType mapStatusToPortalType(BookingStatus status) {
+        return switch (status) {
+            case CONFIRMED -> PortalNotificationType.BOOKING_CONFIRMED;
+            case CANCELLED -> PortalNotificationType.BOOKING_CANCELLED;
+            default -> PortalNotificationType.BOOKING_RECEIVED;
+        };
+    }
 
     private String buildResultReadyEmailBody(Patient patient, String resultTitle) {
         return """
                 Hello %s,
-                
+
                 Your medical result is now available in your patient portal:
-                
+
                   "%s"
-                
+
                 Please log in to view it. For questions about your result,
                 contact us at %s.
-                
+
                 — %s
                 """.formatted(patient.getFirstName(), resultTitle, contactPhone, hospitalName);
     }
@@ -379,9 +442,12 @@ public class DefaultNotificationService implements NotificationService {
         return patient.getPhone() != null && !patient.getPhone().isBlank();
     }
 
-    /**
-     * Wraps a send call so that a single channel failure never bubbles up to the caller.
-     */
+    private String truncate(String text, int maxLen) {
+        if (text == null) return "";
+        return text.length() <= maxLen ? text : text.substring(0, maxLen) + "...";
+    }
+
+    /** Wraps a send call so that a single channel failure never bubbles up to the caller. */
     private void sendSafely(String label, Runnable sendAction) {
         try {
             sendAction.run();
