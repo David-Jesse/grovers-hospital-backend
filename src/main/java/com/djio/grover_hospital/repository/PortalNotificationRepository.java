@@ -19,7 +19,7 @@ public interface PortalNotificationRepository extends JpaRepository<PortalNotifi
             Long userId, String userType, Pageable pageable
     );
 
-    Page<PortalNotification> findByUserIdAndUserTypeIsReadOrderByCreatedAtDesc(
+    Page<PortalNotification> findByUserIdAndUserTypeAndIsReadOrderByCreatedAtDesc(
             Long userId, String userType, Boolean isRead, Pageable pageable
     );
 

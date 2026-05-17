@@ -71,7 +71,7 @@ public class PortalNotificationService {
         String userType = currentUserType();
         Long userId = SecurityUtils.getCurrentUserId();
         Page<PortalNotification> page = (unreadOnly != null && unreadOnly)
-                ? notificationRepository.findByUserIdAndUserTypeIsReadOrderByCreatedAtDesc(
+                ? notificationRepository.findByUserIdAndUserTypeAndIsReadOrderByCreatedAtDesc(
                 userId, userType, false, pageable
         ) : notificationRepository.findByUserIdAndUserTypeOrderByCreatedAtDesc(
                 userId, userType, pageable
