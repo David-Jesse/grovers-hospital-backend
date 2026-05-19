@@ -22,7 +22,7 @@ public class PatientHealthProfileRequest {
     private Integer heightCm;
 
     @DecimalMin(value = "1.0", message = "Weight must be positive")
-    private BigDecimal weightKh;
+    private BigDecimal weightKg;
 
     @Size(max = 200)
     private String emergencyContactName;
