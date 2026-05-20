@@ -38,9 +38,9 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
               AND (:isRead IS NULL OR f.isRead = :isRead)
             ORDER BY f.createdAt DESC
             """)
-    Page<Feedback> findForAdmin(@Param("source") FeedbackSource source,
-                                @Param("status") FeedbackStatus status,
-                                @Param("type") FeedbackType type,
-                                @Param("isRead") Boolean isRead,
-                                Pageable pageable);
+    Page<Feedback> findForAdminWithFilters(@Param("source") FeedbackSource source,
+                                           @Param("status") FeedbackStatus status,
+                                           @Param("type") FeedbackType type,
+                                           @Param("isRead") Boolean isRead,
+                                           Pageable pageable);
 }
