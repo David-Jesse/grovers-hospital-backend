@@ -30,6 +30,7 @@ public class BookingService {
 
     private final BookingRepository bookingRepository;
     private final PatientRepository patientRepository;
+    private final VisitService visitService;
     private final DepartmentRepository departmentRepository;
     private final HealthPackageRepository packageRepository;
     private final NotificationService notificationService;
@@ -171,6 +172,15 @@ public class BookingService {
 
         // Notify patient of the status change
         notificationService.notifyBookingStatusUpdateToPatient(updated);
+
+        // Auto create visit stub when booking flips to COMPLETED
+        if (newStatus == BookingStatus.COMPLETED) {
+            try {
+                visitService.createStubForCompletedBooking(updated);
+            } catch (Exception e) {
+                log.warn("Failed to auto-create visit stub for completed booking {}: {}", updated.getId(), e.getMessage());
+            }
+        }
 
         return AdminBookingResponse.from(updated);
     }

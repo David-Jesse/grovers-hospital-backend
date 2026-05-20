@@ -46,7 +46,6 @@ public class VisitService {
         Visit stub = Visit.builder()
                 .patient(booking.getPatient())
                 .booking(booking)
-                .visitDate(booking.getPreferredDate())
                 .followUpRequired(false)
                 .build();
 
