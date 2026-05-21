@@ -120,7 +120,7 @@ public class NotificationPreferenceService {
         };
     }
 
-    // Internal
+    // ======= Internal =======
 
     private NotificationPreference createDefaultsFor(Long patientId) {
         Patient patient = patientRepository.findById(patientId)
