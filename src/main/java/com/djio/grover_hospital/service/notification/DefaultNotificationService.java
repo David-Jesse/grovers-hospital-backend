@@ -17,6 +17,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
+import com.djio.grover_hospital.service.NotificationPreferenceService;
+import com.djio.grover_hospital.service.NotificationPreferenceService.NotificationEvent;
+import com.djio.grover_hospital.service.NotificationPreferenceService.NotificationChannel;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -31,6 +34,14 @@ import java.util.List;
  *   2. Dispatch to external senders (per the channel toggle config)
  *   3. Create an in-portal Notification entry for the recipient(s)
  *   4. Wrap every channel in sendSafely so one failure doesn't poison the others
+ *
+ * Patient-bound notifications respect a two-layer opt-out:
+ *   1. App-level toggle in application.properties (kill switch)
+ *   2. Per-patient notification_preferences row (opt-out)
+ * Both must allow a channel for the send to fire.
+ *
+ * Admin-bound notifications are NOT gated by patient preferences — admins
+ * receive everything the app config allows.
  */
 @Service
 @RequiredArgsConstructor
@@ -43,6 +54,7 @@ public class DefaultNotificationService implements NotificationService {
     private final SmsSender smsSender;
     private final WhatsappSender whatsappSender;
     private final PortalNotificationService portalNotificationService;
+    private final NotificationPreferenceService notificationPreferenceService;
 
     @Value("${app.hospital.name:Grover's Hospital}")
     private String hospitalName;
@@ -84,8 +96,11 @@ public class DefaultNotificationService implements NotificationService {
     @Async
     public void notifyBookingConfirmationToPatient(Booking booking) {
         Patient patient = booking.getPatient();
+        Long patientId = patient.getId();
+        NotificationEvent event = NotificationEvent.BOOKING_CONFIRMATION;
 
-        if (bookingConfirmEmail) {
+        if (bookingConfirmEmail
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
             sendSafely("booking-confirm-email", () -> emailSender.send(EmailMessage.builder()
                     .to(patient.getEmail())
                     .subject("Booking Received — #" + booking.getId())
@@ -93,16 +108,18 @@ public class DefaultNotificationService implements NotificationService {
                     .build()));
         }
 
-        if (bookingConfirmSms && hasPhone(patient)) {
+        if (bookingConfirmSms && hasPhone(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
             sendSafely("booking-confirm-sms", () -> smsSender.send(SmsMessage.builder()
                     .toPhoneNumber(patient.getPhone())
                     .text(buildBookingConfirmationSmsText(booking))
                     .build()));
         }
 
-        if (bookingConfirmWhatsapp && hasPhone(patient)) {
+        if (bookingConfirmWhatsapp && hasWhatsappTarget(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
             sendSafely("booking-confirm-whatsapp", () -> whatsappSender.send(WhatsappMessage.builder()
-                    .toPhoneNumber(patient.getPhone())
+                    .toPhoneNumber(resolveWhatsappNumber(patient))
                     .templateName("booking_received")
                     .templateParams(List.of(
                             patient.getFirstName(),
@@ -113,7 +130,7 @@ public class DefaultNotificationService implements NotificationService {
                     .build()));
         }
 
-        // In-portal notification
+        // In-portal notification — always fires (the patient explicitly opted into the portal)
         sendSafely("booking-confirm-portal", () -> portalNotificationService.createForPatient(
                 patient.getId(),
                 PortalNotificationType.BOOKING_RECEIVED,
@@ -122,6 +139,7 @@ public class DefaultNotificationService implements NotificationService {
     }
 
     // ===== Booking alert to hospital =====
+    // NOT gated by patient preferences — admin always receives.
 
     @Override
     @Async
@@ -158,8 +176,11 @@ public class DefaultNotificationService implements NotificationService {
     @Async
     public void notifyBookingStatusUpdateToPatient(Booking booking) {
         Patient patient = booking.getPatient();
+        Long patientId = patient.getId();
+        NotificationEvent event = NotificationEvent.BOOKING_STATUS_UPDATE;
 
-        if (statusUpdateEmail) {
+        if (statusUpdateEmail
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
             sendSafely("booking-status-email", () -> emailSender.send(EmailMessage.builder()
                     .to(patient.getEmail())
                     .subject("Booking Update — #" + booking.getId() + " — " + booking.getStatus().name())
@@ -167,16 +188,18 @@ public class DefaultNotificationService implements NotificationService {
                     .build()));
         }
 
-        if (statusUpdateSms && hasPhone(patient)) {
+        if (statusUpdateSms && hasPhone(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
             sendSafely("booking-status-sms", () -> smsSender.send(SmsMessage.builder()
                     .toPhoneNumber(patient.getPhone())
                     .text(buildStatusUpdateShortText(booking))
                     .build()));
         }
 
-        if (statusUpdateWhatsapp && hasPhone(patient)) {
+        if (statusUpdateWhatsapp && hasWhatsappTarget(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
             sendSafely("booking-status-whatsapp", () -> whatsappSender.send(WhatsappMessage.builder()
-                    .toPhoneNumber(patient.getPhone())
+                    .toPhoneNumber(resolveWhatsappNumber(patient))
                     .templateName("booking_status_update")
                     .templateParams(List.of(
                             patient.getFirstName(),
@@ -187,7 +210,7 @@ public class DefaultNotificationService implements NotificationService {
                     .build()));
         }
 
-        // In-portal notification — pick type based on status
+        // In-portal notification — always fires
         PortalNotificationType portalType = mapStatusToPortalType(booking.getStatus());
         sendSafely("booking-status-portal", () -> portalNotificationService.createForPatient(
                 patient.getId(),
@@ -200,7 +223,11 @@ public class DefaultNotificationService implements NotificationService {
     @Override
     @Async
     public void notifyResultReady(Patient patient, String resultTitle) {
-        if (resultReadyEmail) {
+        Long patientId = patient.getId();
+        NotificationEvent event = NotificationEvent.RESULT_READY;
+
+        if (resultReadyEmail
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
             sendSafely("result-ready-email", () -> emailSender.send(EmailMessage.builder()
                     .to(patient.getEmail())
                     .subject("Your medical result is ready")
@@ -208,23 +235,25 @@ public class DefaultNotificationService implements NotificationService {
                     .build()));
         }
 
-        if (resultReadySms && hasPhone(patient)) {
+        if (resultReadySms && hasPhone(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
             sendSafely("result-ready-sms", () -> smsSender.send(SmsMessage.builder()
                     .toPhoneNumber(patient.getPhone())
                     .text("Hi " + patient.getFirstName() + ", your result is ready. Log in to your portal to view it. — " + hospitalName)
                     .build()));
         }
 
-        if (resultReadyWhatsapp && hasPhone(patient)) {
+        if (resultReadyWhatsapp && hasWhatsappTarget(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
             sendSafely("result-ready-whatsapp", () -> whatsappSender.send(WhatsappMessage.builder()
-                    .toPhoneNumber(patient.getPhone())
+                    .toPhoneNumber(resolveWhatsappNumber(patient))
                     .templateName("result_ready")
                     .templateParams(List.of(patient.getFirstName(), resultTitle))
                     .text("Hi " + patient.getFirstName() + ", your result \"" + resultTitle + "\" is ready in your portal.")
                     .build()));
         }
 
-        // In-portal notification
+        // In-portal notification — always fires
         sendSafely("result-ready-portal", () -> portalNotificationService.createForPatient(
                 patient.getId(),
                 PortalNotificationType.RESULT_READY,
@@ -232,6 +261,7 @@ public class DefaultNotificationService implements NotificationService {
     }
 
     // ===== Password reset (email only — security best practice) =====
+    // NOT gated by patient prefs — security email, must always send.
 
     @Override
     @Async
@@ -258,6 +288,7 @@ public class DefaultNotificationService implements NotificationService {
     }
 
     // ===== Feedback received (admin alert) =====
+    // NOT gated by patient prefs — this is for admins.
 
     @Override
     @Async
@@ -440,6 +471,26 @@ public class DefaultNotificationService implements NotificationService {
 
     private boolean hasPhone(Patient patient) {
         return patient.getPhone() != null && !patient.getPhone().isBlank();
+    }
+
+    /**
+     * True if we have any number we can send a WhatsApp message to —
+     * either a dedicated WhatsApp number or a fallback to the SMS phone.
+     */
+    private boolean hasWhatsappTarget(Patient patient) {
+        return (patient.getWhatsappNumber() != null && !patient.getWhatsappNumber().isBlank())
+                || hasPhone(patient);
+    }
+
+    /**
+     * Prefer the dedicated WhatsApp number; fall back to the SMS phone.
+     * Caller should gate on hasWhatsappTarget first.
+     */
+    private String resolveWhatsappNumber(Patient patient) {
+        if (patient.getWhatsappNumber() != null && !patient.getWhatsappNumber().isBlank()) {
+            return patient.getWhatsappNumber();
+        }
+        return patient.getPhone();
     }
 
     private String truncate(String text, int maxLen) {
