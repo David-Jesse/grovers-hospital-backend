@@ -73,6 +73,7 @@ public class FeedbackService {
     @Transactional
     public FeedbackResponse submitPortalFeedback(PortalFeedbackRequest request, HttpServletRequest httpRequest) {
         Long patientId = SecurityUtils.getCurrentUserId();
+        assert patientId != null;
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new UnauthorizedException("Patient session is invalid"));
 
@@ -104,15 +105,6 @@ public class FeedbackService {
                 RESOURCE_TYPE, saved.getId(), httpRequest);
 
         return FeedbackResponse.from(saved);
-    }
-
-    /**
-     * Backward-compatible overload — if any existing caller invokes the old
-     * 1-arg version, we keep that signature working by stubbing the audit log.
-     */
-    @Transactional
-    public FeedbackResponse submitPortalFeedback(PortalFeedbackRequest request) {
-        return submitPortalFeedback(request, null);
     }
 
     public PageResponse<FeedbackResponse> getMyFeedback(Pageable pageable) {
