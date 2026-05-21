@@ -38,6 +38,9 @@ public class Patient {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    @Column(name = "whatsapp_number", length = 20)
+    private String whatsappNumber;
+
     @Column(length = 20)
     private String phone;
 

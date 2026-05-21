@@ -4,7 +4,7 @@ package com.djio.grover_hospital.service;
 import com.djio.grover_hospital.exception.BadRequestException;
 import com.djio.grover_hospital.exception.UnauthorizedException;
 import com.djio.grover_hospital.model.dto.request.ChangePasswordRequest;
-import com.djio.grover_hospital.model.dto.request.PatientProfileResponse;
+import com.djio.grover_hospital.model.dto.response.PatientProfileResponse;
 import com.djio.grover_hospital.model.dto.request.UpdateProfileRequest;
 import com.djio.grover_hospital.model.entity.Patient;
 import com.djio.grover_hospital.repository.PatientRepository;

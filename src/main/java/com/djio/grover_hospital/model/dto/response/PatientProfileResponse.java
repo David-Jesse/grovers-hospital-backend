@@ -1,4 +1,4 @@
-package com.djio.grover_hospital.model.dto.request;
+package com.djio.grover_hospital.model.dto.response;
 
 
 import com.djio.grover_hospital.model.entity.Patient;
@@ -22,6 +22,7 @@ public class PatientProfileResponse {
     private String email;
     private String phone;
     private LocalDate dateOfBirth;
+    private String whatsappNumber;
     private String gender;
     private OffsetDateTime memberSince;
 
@@ -34,6 +35,7 @@ public class PatientProfileResponse {
                 .phone(patient.getPhone())
                 .dateOfBirth(patient.getDateOfBirth())
                 .gender(patient.getGender())
+                .whatsappNumber(patient.getWhatsappNumber())
                 .memberSince(patient.getCreatedAt())
                 .build();
     }

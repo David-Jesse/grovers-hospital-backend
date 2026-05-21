@@ -1,7 +1,7 @@
 package com.djio.grover_hospital.controller;
 
 import com.djio.grover_hospital.model.dto.request.ChangePasswordRequest;
-import com.djio.grover_hospital.model.dto.request.PatientProfileResponse;
+import com.djio.grover_hospital.model.dto.response.PatientProfileResponse;
 import com.djio.grover_hospital.model.dto.request.UpdateProfileRequest;
 import com.djio.grover_hospital.model.dto.response.ApiResponse;
 import com.djio.grover_hospital.service.PatientProfileService;
