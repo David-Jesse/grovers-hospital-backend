@@ -9,7 +9,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AccountDeletionRequest {
+public class AccountDeletionRequestDto {
 
     @NotBlank(message = "Password is required to confirm deletion")
     private String password;
