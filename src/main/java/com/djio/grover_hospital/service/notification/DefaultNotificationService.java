@@ -209,6 +209,10 @@ public class DefaultNotificationService implements NotificationService {
                     .text(buildStatusUpdateShortText(booking))
                     .build()));
         }
+        boolean waPrefAllows = notificationPreferenceService.shouldSend(
+                patientId, event, NotificationChannel.WHATSAPP);
+        log.info("DEBUG status-update whatsapp gate for patient {}: appToggle={} prefAllows={}",
+                patientId, statusUpdateWhatsapp, waPrefAllows);
 
         // In-portal notification — always fires
         PortalNotificationType portalType = mapStatusToPortalType(booking.getStatus());

@@ -108,9 +108,9 @@ public class NotificationPreferenceService {
                 case WHATSAPP -> Boolean.TRUE.equals(prefs.getBookingConfirmationWhatsapp());
             };
             case BOOKING_STATUS_UPDATE -> switch (channel) {
-                case EMAIL -> Boolean.TRUE.equals(prefs.getBookingConfirmationEmail());
-                case SMS -> Boolean.TRUE.equals(prefs.getBookingConfirmationSms());
-                case WHATSAPP -> Boolean.TRUE.equals(prefs.getBookingConfirmationWhatsapp());
+                case EMAIL -> Boolean.TRUE.equals(prefs.getBookingStatusUpdateEmail());
+                case SMS -> Boolean.TRUE.equals(prefs.getBookingStatusUpdateSms());
+                case WHATSAPP -> Boolean.TRUE.equals(prefs.getBookingStatusUpdateWhatsapp());
             };
             case RESULT_READY -> switch (channel) {
                 case EMAIL -> Boolean.TRUE.equals(prefs.getResultReadyEmail());
