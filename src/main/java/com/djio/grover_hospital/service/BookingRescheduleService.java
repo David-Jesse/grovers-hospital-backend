@@ -75,7 +75,7 @@ public class BookingRescheduleService {
         booking.setRescheduleCount(
                 (booking.getRescheduleCount() == null ? 0 : booking.getRescheduleCount()) + 1);
         booking.setLastRescheduledAt(OffsetDateTime.now());
-        booking.setLastRescheduledReason(request.getReason());
+        booking.setLastRescheduleReason(request.getReason());
         // Clear any reminder that was queued for the old date
         booking.setReminderSentForDate(null);
 
