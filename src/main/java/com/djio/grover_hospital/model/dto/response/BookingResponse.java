@@ -40,6 +40,9 @@ public class BookingResponse {
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
+    private Integer rescheduleCount;
+    private OffsetDateTime lastRescheduledAt;
+
     public static BookingResponse from(Booking booking) {
         BookingResponseBuilder builder = BookingResponse.builder()
                 .id(booking.getId())
@@ -48,7 +51,9 @@ public class BookingResponse {
                 .preferredDate(booking.getPreferredDate())
                 .notes(booking.getNotes())
                 .createdAt(booking.getCreatedAt())
-                .updatedAt(booking.getUpdatedAt());
+                .updatedAt(booking.getUpdatedAt())
+                .lastRescheduledAt(booking.getLastRescheduledAt())
+                .rescheduleCount(booking.getRescheduleCount());
 
         if (booking.getDepartment() != null) {
             builder.departmentId(booking.getDepartment().getId())
