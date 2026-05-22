@@ -1,7 +1,6 @@
 package com.djio.grover_hospital.service;
 
 import com.djio.grover_hospital.config.NotificationDefaultProperties;
-import com.djio.grover_hospital.exception.ResourceNotFoundException;
 import com.djio.grover_hospital.exception.UnauthorizedException;
 import com.djio.grover_hospital.model.dto.request.NotificationPreferencesRequest;
 import com.djio.grover_hospital.model.dto.response.NotificationPreferencesResponse;
@@ -10,7 +9,6 @@ import com.djio.grover_hospital.model.entity.Patient;
 import com.djio.grover_hospital.repository.NotificationPreferenceRepository;
 import com.djio.grover_hospital.repository.PatientRepository;
 import com.djio.grover_hospital.security.SecurityUtils;
-import jakarta.servlet.ServletContainerInitializer;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

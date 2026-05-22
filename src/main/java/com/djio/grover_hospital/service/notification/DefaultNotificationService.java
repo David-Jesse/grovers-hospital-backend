@@ -6,6 +6,7 @@ import com.djio.grover_hospital.model.entity.Patient;
 import com.djio.grover_hospital.model.enums.BookingStatus;
 import com.djio.grover_hospital.model.enums.FeedbackSource;
 import com.djio.grover_hospital.model.enums.PortalNotificationType;
+import com.djio.grover_hospital.security.SecurityUtils;
 import com.djio.grover_hospital.service.PortalNotificationService;
 import com.djio.grover_hospital.service.notification.channel.EmailMessage;
 import com.djio.grover_hospital.service.notification.channel.SmsMessage;
@@ -222,6 +223,57 @@ public class DefaultNotificationService implements NotificationService {
                 buildStatusUpdatePortalMessage(booking)));
     }
 
+    @Override
+    @Async
+    public void notifyAppointmentReminderToPatient(Booking booking) {
+            Patient patient = booking.getPatient();
+            Long patientId = patient.getId();
+            // Reuse the booking-status-update preference toggles for reminders
+            NotificationEvent event = NotificationEvent.BOOKING_STATUS_UPDATE;
+
+            if (statusUpdateEmail
+                    && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
+                sendSafely("appointment-reminder-email", () -> emailSender.send(EmailMessage.builder()
+                        .to(patient.getEmail())
+                        .subject("Reminder: your appointment is tomorrow — #" + booking.getId())
+                        .textBody(buildReminderEmailBody(booking))
+                        .build()));
+            }
+
+            if (statusUpdateSms && hasPhone(patient)
+                    && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
+                sendSafely("appointment-reminder-sms", () -> smsSender.send(SmsMessage.builder()
+                        .toPhoneNumber(patient.getPhone())
+                        .text("Reminder: Hi " + patient.getFirstName() + ", your booking #" + booking.getId() +
+                                " is tomorrow (" + booking.getPreferredDate().format(DATE_FMT) + "). — " + hospitalName)
+                        .build()));
+            }
+
+            if (statusUpdateWhatsapp && hasWhatsappTarget(patient)
+                    && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
+                sendSafely("appointment-reminder-whatsapp", () -> whatsappSender.send(WhatsappMessage.builder()
+                        .toPhoneNumber(resolveWhatsappNumber(patient))
+                        .templateName("appointment_reminder")
+                        .templateParams(List.of(
+                                patient.getFirstName(),
+                                String.valueOf(booking.getId()),
+                                booking.getPreferredDate().format(DATE_FMT)
+                        ))
+                        .text("Reminder: Hi " + patient.getFirstName() + ", your booking #" + booking.getId() +
+                                " is tomorrow (" + booking.getPreferredDate().format(DATE_FMT) + ").")
+                        .build()));
+            }
+
+        // In-portal bell notification — always fires
+        sendSafely("appointment-reminder-portal", () -> portalNotificationService.createForPatient(
+                patient.getId(),
+                // Reuse an existing portal type. If you have a dedicated
+                // APPOINTMENT_REMINDER type in PortalNotificationType, use that instead.
+                com.djio.grover_hospital.model.enums.PortalNotificationType.BOOKING_CONFIRMED,
+                String.format("Reminder: your booking #%d is scheduled for tomorrow, %s.",
+                        booking.getId(), booking.getPreferredDate().format(DATE_FMT))));
+    }
+
     // ===== Result ready notification =====
 
     @Override
@@ -419,6 +471,33 @@ public class DefaultNotificationService implements NotificationService {
                 p.getFirstName(), statusMessage, booking.getId(),
                 bookingTargetLine(booking), booking.getPreferredDate().format(DATE_FMT),
                 booking.getStatus().name(), contactPhone, hospitalName);
+    }
+
+    private String buildReminderEmailBody(Booking booking) {
+        Patient p = booking.getPatient();
+        return """
+                Hello %s,
+ 
+                This is a friendly reminder that you have an appointment scheduled
+                for tomorrow.
+ 
+                Booking ID:      #%d
+                %s
+                Date:            %s
+ 
+                If you need to reschedule, you can do so from your patient portal,
+                or contact us at %s.
+ 
+                We look forward to seeing you.
+ 
+                — %s
+                """.formatted(
+                p.getFirstName(),
+                booking.getId(),
+                bookingTargetLine(booking),
+                booking.getPreferredDate().format(DATE_FMT),
+                contactPhone,
+                hospitalName);
     }
 
     private String buildStatusUpdateShortText(Booking booking) {

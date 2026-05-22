@@ -24,6 +24,8 @@ public interface NotificationService {
 
     void notifyPasswordResetLink(Patient patient, String resetToken);
 
+    void notifyAppointmentReminderToPatient(Booking booking);
+
     /**
      * Send to hospital when new feedback arrives (homepage form or patient portal)
      */

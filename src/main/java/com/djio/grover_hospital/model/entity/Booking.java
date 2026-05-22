@@ -37,17 +37,23 @@ public class Booking {
     @Column(name = "booking_type", nullable = false, length = 20)
     private BookingType bookingType;
 
-    /** Set when bookingType is CONSULTATION. null otherwise */
+    /**
+     * Set when bookingType is CONSULTATION. null otherwise
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Department department;
 
-    /** Set when bookingType is PACKAGE. Null otherwise. */
+    /**
+     * Set when bookingType is PACKAGE. Null otherwise.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "package_id")
     private HealthPackage healthPackage;
 
-    /** Set when bookingType is PACKAGE. Optional even then. */
+    /**
+     * Set when bookingType is PACKAGE. Optional even then.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "package_tier_id")
     private PackageTier packageTier;
@@ -62,6 +68,9 @@ public class Booking {
     @Column(name = "last_reschedule_at")
     private OffsetDateTime lastRescheduledAt;
 
+    @Column(name = "last_rescheduled_reason", columnDefinition = "TEXT")
+    private String lastRescheduledReason;
+
     /**
      * The preferred_date value for which a 24-hour reminder has already been sent.
      * Lets the reminder cron avoid double-sending, and naturally re-arms if the
@@ -70,11 +79,15 @@ public class Booking {
     @Column(name = "reminder_sent_for_data")
     private LocalDate reminderSentForDate;
 
-    /** Patient-supplied notes (symptoms, special requests, etc.) */
+    /**
+     * Patient-supplied notes (symptoms, special requests, etc.)
+     */
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    /** Internal admin notes (confirmed time, follow-ups, etc.) — never returned to patient */
+    /**
+     * Internal admin notes (confirmed time, follow-ups, etc.) — never returned to patient
+     */
     @Column(name = "admin_notes", columnDefinition = "TEXT")
     private String adminNotes;
 
