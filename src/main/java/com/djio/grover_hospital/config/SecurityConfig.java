@@ -56,6 +56,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/testimonials/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/doctors/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/portal/account/export-data/*").permitAll()
 
                         // Public POST - feedback form on homepage
                         .requestMatchers(HttpMethod.POST, "/feedback").permitAll()
