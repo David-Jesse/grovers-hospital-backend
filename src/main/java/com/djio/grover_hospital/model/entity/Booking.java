@@ -55,6 +55,21 @@ public class Booking {
     @Column(name = "preferred_date", nullable = false)
     private LocalDate preferredDate;
 
+    @Column(name = "reschedule_count", nullable = false)
+    @Builder.Default
+    private Integer rescheduleCount = 0;
+
+    @Column(name = "last_reschedule_at")
+    private OffsetDateTime lastRescheduledAt;
+
+    /**
+     * The preferred_date value for which a 24-hour reminder has already been sent.
+     * Lets the reminder cron avoid double-sending, and naturally re-arms if the
+     * patient reschedules to a new date.
+     */
+    @Column(name = "reminder_sent_for_data")
+    private LocalDate reminderSentForDate;
+
     /** Patient-supplied notes (symptoms, special requests, etc.) */
     @Column(columnDefinition = "TEXT")
     private String notes;
