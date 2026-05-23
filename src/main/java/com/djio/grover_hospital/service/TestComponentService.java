@@ -34,7 +34,8 @@ public class TestComponentService {
     @Transactional(readOnly = true)
     public List<TestComponentResponse> getMyResultComponents(Long resultId) {
         Long patientId = SecurityUtils.getCurrentUserId();
-        Result result = resultRepository.findById(patientId)
+        log.info("DEBUG current patientId={}", patientId);
+        Result result = resultRepository.findById(resultId)
                 .orElseThrow(() -> new ResourceNotFoundException("Result not found with id " + resultId));
 
         // Ownership guard - a patient can only read components of thier own results
@@ -42,7 +43,7 @@ public class TestComponentService {
             throw new UnauthorizedException("You can only view components of your own results");
         }
 
-        return testComponentRepository.findByResultIdOrderByDisplayOrderAscIdDesc(resultId)
+        return testComponentRepository.findByResultIdOrderByDisplayOrderAscIdAsc(resultId)
                 .stream().map(TestComponentResponse::from).toList();
     }
 
@@ -51,7 +52,7 @@ public class TestComponentService {
     @Transactional(readOnly = true)
     public List<TestComponentResponse> getComponentsForResult(Long resultId) {
         verifyResultExists(resultId);
-        return testComponentRepository.findByResultIdOrderByDisplayOrderAscIdDesc(resultId)
+        return testComponentRepository.findByResultIdOrderByDisplayOrderAscIdAsc(resultId)
                 .stream().map(TestComponentResponse::from).toList();
     }
 

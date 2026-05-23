@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface TestComponentRepository extends JpaRepository<TestComponent, Long> {
 
-    List<TestComponent> findByResultIdOrderByDisplayOrderAscIdDesc(Long resultId);
+    List<TestComponent> findByResultIdOrderByDisplayOrderAscIdAsc(Long resultId);
 
     void deleteByResultId(Long resultId);
 

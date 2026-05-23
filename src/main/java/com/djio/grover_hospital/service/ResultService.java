@@ -48,7 +48,6 @@ public class ResultService {
     private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
 
     private final ResultRepository resultRepository;
-    private final ResultFileRepository resultFileRepository;
     private final PatientRepository patientRepository;
     private final AdminRepository adminRepository;
     private final BookingRepository bookingRepository;
@@ -117,11 +116,12 @@ public class ResultService {
         // Encrypt and store each file
         for (MultipartFile file : files) {
             ResultFile resultFile = encryptAndStoreFile(file, result);
-            resultFileRepository.save(resultFile);
             result.getFiles().add(resultFile);
         }
 
-        log.info("Result #{} uploaded by admin {} for patientt {} with {} file(s)", result.getId(), admin.getId(), patient.getId(), files.size());
+        result = resultRepository.save(result);
+
+        log.info("Result #{} uploaded by admin {} for patient {} with {} file(s)", result.getId(), admin.getId(), patient.getId(), files.size());
         auditService.log(adminId, "ADMIN", "UPLOAD_RESULT", "RESULT", result.getId(), httpRequest);
 
         // Optionally notify patient now (default true)
