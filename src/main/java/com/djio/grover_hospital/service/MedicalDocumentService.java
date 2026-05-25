@@ -143,8 +143,11 @@ public class MedicalDocumentService {
     // Download (decrypt) — patient downloads own, admin downloads any
     // ============================================================
 
-    /** Resolved decrypted bytes + metadata for a download response. */
-    public record DocumentDownload(byte[] data, String fileName, String contentType) {}
+    /**
+     * Resolved decrypted bytes + metadata for a download response.
+     */
+    public record DocumentDownload(byte[] data, String fileName, String contentType) {
+    }
 
     @Transactional(readOnly = true)
     public DocumentDownload downloadAsPatient(Long documentId) {
