@@ -7,5 +7,5 @@ public enum DocumentCategory {
     PRESCRIPTION,
     IDENTIFICATION,
     CONSENT_FORM,
-    OTHER
+    OTHER 
 }
