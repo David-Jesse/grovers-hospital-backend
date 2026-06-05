@@ -1,12 +1,12 @@
 package com.djio.grover_hospital.model.entity;
 
 
+import com.djio.grover_hospital.model.enums.Tone;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +37,7 @@ public class HealthPackage {
      * Nullable - when null, frontend displays "Contact for quote".
      */
     @Column(name = "target_audience", length = 500)
-   private String targetAudience;
+    private String targetAudience;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
@@ -47,6 +47,27 @@ public class HealthPackage {
     @OrderBy("displayOrder ASC")
     @Builder.Default
     private List<PackageTier> tiers = new ArrayList<>();
+
+    /**
+     * Rows of the inclusion matrix (the test labels rendered down the left edge of the public page).
+     * Package-scoped — see {@link PackageInclusion}.
+     */
+    @OneToMany(mappedBy = "healthPackage", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("displayOrder ASC")
+    @Builder.Default
+    private List<PackageInclusion> inclusions = new ArrayList<>();
+
+    /** Heading-band visual tone on the public page. Defaults to GREEN. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "heading_tone", nullable = false, length = 20)
+    @Builder.Default
+    private Tone headingTone = Tone.GREEN;
+
+    /** Pricing-band visual tone on the public page. Defaults to GREEN. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pricing_tone", nullable = false, length = 20)
+    @Builder.Default
+    private Tone pricingTone = Tone.GREEN;
 
     @Column(name = "display_order", nullable = false)
     @Builder.Default
