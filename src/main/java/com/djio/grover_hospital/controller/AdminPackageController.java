@@ -1,10 +1,13 @@
 package com.djio.grover_hospital.controller;
 
 
+import com.djio.grover_hospital.model.dto.request.BulkCellsRequest;
 import com.djio.grover_hospital.model.dto.request.HealthPackageRequest;
+import com.djio.grover_hospital.model.dto.request.PackageInclusionRequest;
 import com.djio.grover_hospital.model.dto.request.PackageTierRequest;
 import com.djio.grover_hospital.model.dto.response.ApiResponse;
 import com.djio.grover_hospital.model.dto.response.HealthPackageResponse;
+import com.djio.grover_hospital.model.dto.response.PackageInclusionResponse;
 import com.djio.grover_hospital.model.dto.response.PackageTierResponse;
 import com.djio.grover_hospital.service.HealthPackageService;
 import jakarta.validation.Valid;
@@ -29,6 +32,11 @@ public class AdminPackageController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<HealthPackageResponse>>> list() {
         return ResponseEntity.ok(ApiResponse.success(packageService.getAllForAdmin()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<HealthPackageResponse>> getOne(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(packageService.getById(id)));
     }
 
     @PostMapping
@@ -75,5 +83,42 @@ public class AdminPackageController {
     public ResponseEntity<ApiResponse<Void>> deleteTier(@PathVariable Long tierId) {
         packageService.deleteTier(tierId);
         return ResponseEntity.ok(ApiResponse.success("Tier deleted", null));
+    }
+
+    // === Inclusions (rows of the matrix) ===
+
+    @PostMapping("/{packageId}/inclusions")
+    public ResponseEntity<ApiResponse<PackageInclusionResponse>> addInclusion(
+            @PathVariable Long packageId,
+            @Valid @RequestBody PackageInclusionRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Inclusion added", packageService.addInclusion(packageId, request)));
+    }
+
+    @PutMapping("/inclusions/{inclusionId}")
+    public ResponseEntity<ApiResponse<PackageInclusionResponse>> updateInclusion(
+            @PathVariable Long inclusionId,
+            @Valid @RequestBody PackageInclusionRequest request
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success("Inclusion updated", packageService.updateInclusion(inclusionId, request)));
+    }
+
+    @DeleteMapping("/inclusions/{inclusionId}")
+    public ResponseEntity<ApiResponse<Void>> deleteInclusion(@PathVariable Long inclusionId) {
+        packageService.deleteInclusion(inclusionId);
+        return ResponseEntity.ok(ApiResponse.success("Inclusion deleted", null));
+    }
+
+    // === Cells (the matrix grid) — atomic bulk replace ===
+
+    @PutMapping("/{packageId}/cells")
+    public ResponseEntity<ApiResponse<HealthPackageResponse>> bulkReplaceCells(
+            @PathVariable Long packageId,
+            @Valid @RequestBody BulkCellsRequest request
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success("Matrix updated", packageService.bulkReplaceCells(packageId, request)));
     }
 }
