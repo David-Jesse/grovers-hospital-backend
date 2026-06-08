@@ -85,6 +85,8 @@ public class BlogService {
         BlogPost post = blogPostRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Blog post", "id", id));
 
+        // Regenerate slug only when the title changes — keeps existing URLs alive
+        // for posts whose title is untouched.
         if (!post.getTitle().equals(request.getTitle())) {
             post.setSlug(generateUniqueSlug(request.getTitle(), id));
         }
@@ -97,18 +99,18 @@ public class BlogService {
         post.setMetaTitle(request.getMetaTitle());
         post.setMetaDescription(request.getMetaDescription());
 
-        // Handle publish state transitions
-        if (request.getIsPublished() != null) {
-            boolean wasPublished = Boolean.TRUE.equals(post.getIsPublished());
-            boolean willBePublished = Boolean.TRUE.equals(request.getIsPublished());
-            post.setIsPublished(willBePublished);
-
-            // Set publishedAt only on first publish; preserve original data on subsequent edits
-
-            if (!wasPublished && willBePublished) {
-                post.setPublishedAt(OffsetDateTime.now());
-            }
+        // publishedAt is the snapshot of "when did this first go live".
+        // - Transitioning DRAFT -> PUBLISHED: stamp it now.
+        // - Transitioning PUBLISHED -> DRAFT: clear it (so a future re-publish gets a fresh stamp).
+        // - No change: leave it alone.
+        boolean wasPublished = Boolean.TRUE.equals(post.getIsPublished());
+        boolean nowPublished = Boolean.TRUE.equals(request.getIsPublished());
+        if (!wasPublished && nowPublished) {
+            post.setPublishedAt(OffsetDateTime.now());
+        } else if (wasPublished && !nowPublished) {
+            post.setPublishedAt(null);
         }
+        post.setIsPublished(request.getIsPublished());
 
         return BlogPostResponse.fromDetail(blogPostRepository.save(post));
     }

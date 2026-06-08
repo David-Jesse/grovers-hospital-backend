@@ -31,5 +31,8 @@ public class PatientHealthProfileRequest {
     private String emergencyContactRelationship;
 
     @Size(max = 20)
+    private String whatsappNumber;
+
+    @Size(max = 20)
     private String emergencyContactPhone;
 }

@@ -47,6 +47,14 @@ public class AdminBlogController {
         return ResponseEntity.ok(ApiResponse.success("Publish state toggled", blogService.togglePublish(id)));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<BlogPostResponse>> update(
+            @PathVariable Long id,
+            @Valid @RequestBody BlogPostRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Blog post updated", blogService.update(id, request)));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         blogService.delete(id);
