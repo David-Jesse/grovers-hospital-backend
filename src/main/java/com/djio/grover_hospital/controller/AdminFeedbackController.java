@@ -49,9 +49,10 @@ public class AdminFeedbackController {
             @RequestParam(required = false) FeedbackStatus status,
             @RequestParam(required = false) FeedbackType type,
             @RequestParam(required = false) Boolean isRead,
+            @RequestParam(required = false) String search,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        PageResponse<FeedbackResponse> result = feedbackService.listForAdminFiltered(source, status, type, isRead, pageable);
+        PageResponse<FeedbackResponse> result = feedbackService.listForAdminFiltered(source, status, type, isRead, search, pageable);
         return ResponseEntity.ok(ApiResponse.success("Feedback retrieved", result));
     }
 

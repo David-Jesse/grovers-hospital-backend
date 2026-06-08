@@ -126,12 +126,16 @@ public class FeedbackService {
     }
 
     /** NEW — admin list with filters by source/status/type/isRead. */
-    public PageResponse<FeedbackResponse> listForAdminFiltered(FeedbackSource source,
-                                                               FeedbackStatus status,
-                                                               FeedbackType type,
-                                                               Boolean isRead,
-                                                               Pageable pageable) {
-        Page<Feedback> page = feedbackRepository.findForAdminWithFilters(source, status, type, isRead, pageable);
+    public PageResponse<FeedbackResponse> listForAdminFiltered(
+            FeedbackSource source,
+            FeedbackStatus status,
+            FeedbackType type,
+            Boolean isRead,
+            String search,
+            Pageable pageable
+    ) {
+        String normalized = (search == null || search.isBlank()) ? null : search.trim();
+        Page<Feedback> page = feedbackRepository.findForAdminWithFilters(source, status, type, isRead, normalized, pageable);
         return PageResponse.from(page, FeedbackResponse::from);
     }
 

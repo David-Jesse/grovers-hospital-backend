@@ -32,15 +32,21 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
      */
     @Query("""
             SELECT f FROM Feedback f
-            WHERE (:source IS NULL OR f.source = :source)
-              AND (:status IS NULL OR f.status = :status)
-              AND (:type IS NULL OR f.type = :type)
-              AND (:isRead IS NULL OR f.isRead = :isRead)
-            ORDER BY f.createdAt DESC
+                                              WHERE (:source IS NULL OR f.source = :source)
+                                                AND (:status IS NULL OR f.status = :status)
+                                                AND (:type   IS NULL OR f.type   = :type)
+                                                AND (:isRead IS NULL OR f.isRead = :isRead)
+                                                AND (:search IS NULL
+                                                     OR LOWER(f.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+                                                     OR LOWER(f.message) LIKE LOWER(CONCAT('%', :search, '%'))
+                                                     OR LOWER(f.name)    LIKE LOWER(CONCAT('%', :search, '%'))
+                                                     OR LOWER(f.email)   LIKE LOWER(CONCAT('%', :search, '%')))
+                                              ORDER BY f.createdAt DESC
             """)
     Page<Feedback> findForAdminWithFilters(@Param("source") FeedbackSource source,
                                            @Param("status") FeedbackStatus status,
                                            @Param("type") FeedbackType type,
                                            @Param("isRead") Boolean isRead,
+                                           @Param("search") String search,
                                            Pageable pageable);
 }
