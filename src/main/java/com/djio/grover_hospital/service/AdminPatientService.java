@@ -25,7 +25,9 @@ public class AdminPatientService {
 
     public PageResponse<AdminPatientResponse> search(String search, Pageable pageable) {
         String normalized = (search == null || search.isBlank()) ? null : search.trim();
-        Page<Patient> page = patientRepository.searchAll(normalized, pageable);
+        Page<Patient> page = (normalized == null)
+                ? patientRepository.findAll(pageable)
+                : patientRepository.searchByText(normalized, pageable);
         return PageResponse.from(page, AdminPatientResponse::from);
     }
 

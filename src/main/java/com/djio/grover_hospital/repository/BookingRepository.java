@@ -21,5 +21,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             LocalDate preferredDate, BookingStatus status
     );
 
+    long countByStatus(BookingStatus status);
+
     Page<Booking> findByStatusOrderByCreatedAtDesc(BookingStatus status, Pageable pageable);
 }

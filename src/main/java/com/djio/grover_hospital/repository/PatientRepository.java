@@ -17,13 +17,18 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
 
     boolean existsByEmail(String email);
 
+    /** All patients, paginated. */
+    Page<Patient> findAllByOrderByIdDesc(Pageable pageable);
+// or keep using JpaRepository.findAll(pageable) — same idea
+
+    /** Patients matching a free-text search across name, email, phone. */
     @Query("""
         SELECT p FROM Patient p
-        WHERE :search IS NULL
-           OR LOWER(p.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+        WHERE LOWER(p.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
            OR LOWER(p.lastName)  LIKE LOWER(CONCAT('%', :search, '%'))
            OR LOWER(p.email)     LIKE LOWER(CONCAT('%', :search, '%'))
            OR p.phone            LIKE CONCAT('%', :search, '%')
         """)
-    Page<Patient> searchAll(@Param("search") String search, Pageable pageable);
+    Page<Patient> searchByText(@Param("search") String search, Pageable pageable);
+
 }

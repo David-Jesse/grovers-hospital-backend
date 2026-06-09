@@ -23,4 +23,6 @@ public interface ProfileUpdateRequestRepository extends JpaRepository<ProfileUpd
             ORDER BY r.createdAt DESC
             """)
     Page<ProfileUpdateRequest> findForAdmin(@Param("status") ProfileUpdateStatus status, Pageable pageable);
+
+    long countByStatus(ProfileUpdateStatus status);
 }

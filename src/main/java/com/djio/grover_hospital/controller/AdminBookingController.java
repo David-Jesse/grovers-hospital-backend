@@ -5,7 +5,6 @@ import com.djio.grover_hospital.model.dto.request.AdminNotesRequest;
 import com.djio.grover_hospital.model.dto.request.BookingStatusUpdateRequest;
 import com.djio.grover_hospital.model.dto.response.AdminBookingResponse;
 import com.djio.grover_hospital.model.dto.response.ApiResponse;
-import com.djio.grover_hospital.model.dto.response.BookingResponse;
 import com.djio.grover_hospital.model.dto.response.PageResponse;
 import com.djio.grover_hospital.model.enums.BookingStatus;
 import com.djio.grover_hospital.service.BookingService;
