@@ -101,4 +101,21 @@ public class AdminResultController {
                 .contentType(MediaType.parseMediaType(stream.getContentType()))
                 .body(new InputStreamResource(stream.getStream()));
     }
+
+    @RestController
+    @RequestMapping("/admin/patients")
+    @RequiredArgsConstructor
+    public class AdminPatientResultController {
+
+        private final ResultService resultService;
+
+        @GetMapping("/{patientId}/results")
+        public ResponseEntity<ApiResponse<PageResponse<AdminResultResponse>>> listForPatient(
+                @PathVariable Long patientId,
+                @PageableDefault(size = 20) Pageable pageable
+        ) {
+            return ResponseEntity.ok(ApiResponse.success(
+                    resultService.getResultsForPatient(patientId, pageable)));
+        }
+    }
 }

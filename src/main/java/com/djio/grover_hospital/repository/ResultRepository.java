@@ -12,4 +12,5 @@ public interface ResultRepository extends JpaRepository<Result, Long> {
     Page<Result> findByPatientIdOrderByCreatedAtDesc(Long patientId, Pageable pageable);
 
     Page<Result> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    
 }

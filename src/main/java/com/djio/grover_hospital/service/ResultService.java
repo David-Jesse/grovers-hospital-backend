@@ -155,6 +155,14 @@ public class ResultService {
         return PageResponse.from(page, AdminResultResponse::from);
     }
 
+    public PageResponse<AdminResultResponse> getResultsForPatient(Long patientId, Pageable pageable) {
+        if (!patientRepository.existsById(patientId)) {
+            throw new ResourceNotFoundException("Patient", "id", patientId);
+        }
+        Page<Result> page = resultRepository.findByPatientIdOrderByCreatedAtDesc(patientId, pageable);
+        return PageResponse.from(page, AdminResultResponse::from);
+    }
+
     public AdminResultResponse getByIdForAdmin(Long id, HttpServletRequest httpRequest) {
         Result result = resultRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Result", "id", id));
