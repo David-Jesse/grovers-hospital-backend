@@ -1,0 +1,245 @@
+{
+  "exportedAt" : "2026-06-10T11:21:00.877789100+01:00",
+  "exportedFor" : "Grover's Hospital Patient Data Export",
+  "profile" : {
+    "id" : 1,
+    "firstName" : "Divine",
+    "lastName" : "baby",
+    "email" : "divine@example.com",
+    "phone" : "+23409358134",
+    "whatsappNumber" : null,
+    "dateOfBirth" : "2003-02-16",
+    "gender" : "FEMALEDivine baby",
+    "createdAt" : "2026-04-28T12:54:06.827049Z"
+  },
+  "healthProfile" : {
+    "bloodGroup" : null,
+    "genotype" : null,
+    "allergies" : null,
+    "clinicalNotes" : null,
+    "heightCm" : 40,
+    "weightKg" : null,
+    "emergencyContactName" : "Mike",
+    "emergencyContactRelationship" : null,
+    "emergencyContactPhone" : null,
+    "updatedAt" : "2026-05-19T11:57:53.71597Z"
+  },
+  "notificationPreferences" : {
+    "bookingConfirmationEmail" : true,
+    "bookingConfirmationSms" : false,
+    "bookingConfirmationWhatsapp" : true,
+    "bookingStatusUpdateEmail" : true,
+    "bookingStatusUpdateSms" : true,
+    "bookingStatusUpdateWhatsapp" : false,
+    "resultReadyEmail" : true,
+    "resultReadySms" : true,
+    "resultReadyWhatsapp" : false
+  },
+  "medications" : [ {
+    "id" : 1,
+    "name" : "Lisinopril",
+    "dosage" : "10mg",
+    "frequency" : "Once daily",
+    "startDate" : "2026-05-01",
+    "endDate" : null,
+    "isActive" : true,
+    "notes" : "For blood pressure management",
+    "prescribedBy" : "Dr. Smith",
+    "createdAt" : "2026-05-20T13:53:02.422827Z"
+  } ],
+  "chronicConditions" : [ {
+    "id" : 1,
+    "name" : "Hypertension",
+    "diagnosedDate" : "2024-01-15",
+    "status" : "MANAGED",
+    "notes" : "Controlled with daily medication",
+    "managingDoctor" : "Dr. Smith",
+    "createdAt" : "2026-05-20T13:56:53.371409Z"
+  } ],
+  "visits" : [ {
+    "id" : 2,
+    "bookingId" : 9,
+    "visitDate" : null,
+    "chiefComplaint" : null,
+    "diagnosis" : null,
+    "treatment" : null,
+    "clinicalNotes" : null,
+    "followUpRequired" : false,
+    "followUpDate" : null,
+    "attendingDoctor" : null,
+    "createdAt" : "2026-06-10T09:10:45.851851Z"
+  }, {
+    "id" : 1,
+    "bookingId" : 1,
+    "visitDate" : "2026-05-25",
+    "chiefComplaint" : "Headache for 3 days",
+    "diagnosis" : "Tension headache",
+    "treatment" : "Paracetamol 500mg PRN, hydration advice",
+    "clinicalNotes" : "BP 120/80, vitals normal",
+    "followUpRequired" : true,
+    "followUpDate" : "2026-06-08",
+    "attendingDoctor" : "Dr. Smith",
+    "createdAt" : "2026-05-20T13:32:14.351566Z"
+  } ],
+  "bookings" : [ {
+    "id" : 10,
+    "type" : "CONSULTATION",
+    "status" : "PENDING",
+    "preferredDate" : "2026-06-12",
+    "department" : "Mental Health",
+    "healthPackage" : null,
+    "packageTier" : null,
+    "notes" : null,
+    "adminNotes" : null,
+    "createdAt" : "2026-06-10T10:09:41.649787Z"
+  }, {
+    "id" : 9,
+    "type" : "CONSULTATION",
+    "status" : "COMPLETED",
+    "preferredDate" : "2026-11-06",
+    "department" : "ENT (Ear, Nose & Throat)",
+    "healthPackage" : null,
+    "packageTier" : null,
+    "notes" : null,
+    "adminNotes" : "The patient will like to come in as early as 7am",
+    "createdAt" : "2026-06-05T11:11:53.908708Z"
+  }, {
+    "id" : 8,
+    "type" : "CONSULTATION",
+    "status" : "CANCELLED",
+    "preferredDate" : "2026-06-10",
+    "department" : "OB/GYN",
+    "healthPackage" : null,
+    "packageTier" : null,
+    "notes" : null,
+    "adminNotes" : null,
+    "createdAt" : "2026-06-05T10:58:11.974466Z"
+  }, {
+    "id" : 7,
+    "type" : "CONSULTATION",
+    "status" : "CANCELLED",
+    "preferredDate" : "2026-05-23",
+    "department" : "General Surgery",
+    "healthPackage" : null,
+    "packageTier" : null,
+    "notes" : "I've had a persistennt cough for two weeks",
+    "adminNotes" : null,
+    "createdAt" : "2026-05-22T15:35:33.56306Z"
+  }, {
+    "id" : 6,
+    "type" : "PACKAGE",
+    "status" : "CANCELLED",
+    "preferredDate" : "2026-06-20",
+    "department" : null,
+    "healthPackage" : "Domestic Staff Screening",
+    "packageTier" : "Standard",
+    "notes" : "For my new domestic hire",
+    "adminNotes" : "Booking confirmed for the suggested date sweetheart",
+    "createdAt" : "2026-05-21T12:42:05.188021Z"
+  }, {
+    "id" : 5,
+    "type" : "PACKAGE",
+    "status" : "CONFIRMED",
+    "preferredDate" : "2026-06-20",
+    "department" : null,
+    "healthPackage" : "Domestic Staff Screening",
+    "packageTier" : "Standard",
+    "notes" : "For my new domestic hire",
+    "adminNotes" : "Booking confirmed for the suggested date sweetheart",
+    "createdAt" : "2026-05-21T12:27:33.578318Z"
+  }, {
+    "id" : 4,
+    "type" : "PACKAGE",
+    "status" : "CONFIRMED",
+    "preferredDate" : "2026-06-20",
+    "department" : null,
+    "healthPackage" : "Domestic Staff Screening",
+    "packageTier" : "Standard",
+    "notes" : "For my new domestic hire",
+    "adminNotes" : "Booking confirmed for the suggested date sweetheart",
+    "createdAt" : "2026-05-21T12:22:48.791706Z"
+  }, {
+    "id" : 3,
+    "type" : "CONSULTATION",
+    "status" : "CANCELLED",
+    "preferredDate" : "2026-05-25",
+    "department" : "General Surgery",
+    "healthPackage" : null,
+    "packageTier" : null,
+    "notes" : "First-time visit, general checkup",
+    "adminNotes" : null,
+    "createdAt" : "2026-05-20T13:27:20.855631Z"
+  }, {
+    "id" : 2,
+    "type" : "PACKAGE",
+    "status" : "PENDING",
+    "preferredDate" : "2026-06-20",
+    "department" : null,
+    "healthPackage" : "Domestic Staff Screening",
+    "packageTier" : "Standard",
+    "notes" : "For my new domestic hire",
+    "adminNotes" : null,
+    "createdAt" : "2026-05-04T09:43:48.686911Z"
+  }, {
+    "id" : 1,
+    "type" : "CONSULTATION",
+    "status" : "COMPLETED",
+    "preferredDate" : "2026-06-15",
+    "department" : "General Surgery",
+    "healthPackage" : null,
+    "packageTier" : null,
+    "notes" : "I've had a persistennt cough for two weeks",
+    "adminNotes" : "Booking confirmed for the suggested date sweetheart",
+    "createdAt" : "2026-05-04T09:39:02.891522Z"
+  } ],
+  "results" : [ {
+    "id" : 4,
+    "title" : "Blood Test Results - June 2026",
+    "notes" : "Routine check-up — all values within normal range",
+    "createdAt" : "2026-05-05T18:19:40.65255Z",
+    "_note" : "Encrypted file contents are not included in this export. Log into the patient portal to view/download individual result files."
+  }, {
+    "id" : 3,
+    "title" : "Blood Test Results - June 2026",
+    "notes" : "Routine check-up — all values within normal range",
+    "createdAt" : "2026-05-05T18:01:44.631621Z",
+    "_note" : "Encrypted file contents are not included in this export. Log into the patient portal to view/download individual result files."
+  } ],
+  "feedback" : [ {
+    "id" : 8,
+    "subject" : null,
+    "message" : "Loved the service",
+    "type" : "COMPLIMENT",
+    "rating" : 5,
+    "responseWanted" : false,
+    "status" : "NEW",
+    "createdAt" : "2026-06-10T10:20:39.44597Z"
+  }, {
+    "id" : 5,
+    "subject" : null,
+    "message" : "Quick general comment about the facility cleanliness.",
+    "type" : "GENERAL",
+    "rating" : null,
+    "responseWanted" : false,
+    "status" : "NEW",
+    "createdAt" : "2026-05-21T09:16:30.323665Z"
+  }, {
+    "id" : 4,
+    "subject" : "Great service",
+    "message" : "Dr. Smith was very thorough and answered all my questions",
+    "type" : "COMPLIMENT",
+    "rating" : 5,
+    "responseWanted" : false,
+    "status" : "NEW",
+    "createdAt" : "2026-05-21T09:15:52.705097Z"
+  }, {
+    "id" : 3,
+    "subject" : "Wait time concern",
+    "message" : "I waited 90 minutes past my scheduled appointment time without any update",
+    "type" : "COMPLAINT",
+    "rating" : 2,
+    "responseWanted" : true,
+    "status" : "RESPONSE_SENT",
+    "createdAt" : "2026-05-21T09:14:29.504331Z"
+  } ]
+}
