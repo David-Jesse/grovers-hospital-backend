@@ -27,10 +27,18 @@ public class BlogService {
 
 
     // === Public read ===
-    public PageResponse<BlogPostResponse> getPublishedPosts(Pageable pageable, String tag) {
-        Page<BlogPost> page = (tag == null || tag.isBlank())
-                ? blogPostRepository.findByIsPublishedTrueOrderByPublishedAtDesc(pageable)
-                : blogPostRepository.findByIsPublishedTrueAndTagsContainingIgnoreCaseOrderByPublishedAtDesc(tag, pageable);
+    public PageResponse<BlogPostResponse> getPublishedPosts(Pageable pageable, String tag, String category) {
+        Page<BlogPost> page;
+
+        if (category != null && !category.isBlank()) {
+            page = blogPostRepository
+                    .findByIsPublishedTrueAndCategoryIgnoreCaseOrderByPublishedAtDesc(category.trim(), pageable);
+        } else if (tag != null && !tag.isBlank()) {
+            page = blogPostRepository
+                    .findByIsPublishedTrueAndTagsContainingIgnoreCaseOrderByPublishedAtDesc(tag, pageable);
+        } else {
+            page = blogPostRepository.findByIsPublishedTrueOrderByPublishedAtDesc(pageable);
+        }
 
         return PageResponse.from(page, BlogPostResponse::fromList);
     }
@@ -73,6 +81,7 @@ public class BlogService {
                 .tags(request.getTags())
                 .metaTitle(request.getMetaTitle())
                 .metaDescription(request.getMetaDescription())
+                .category(request.getCategory())
                 .isPublished(request.getIsPublished())
                 .publishedAt(publishing ? OffsetDateTime.now() : null)
                 .build();
@@ -96,6 +105,7 @@ public class BlogService {
         post.setContent(request.getContent());
         post.setFeaturedImage(request.getFeaturedImage());
         post.setTags(request.getTags());
+        post.setCategory(request.getCategory());
         post.setMetaTitle(request.getMetaTitle());
         post.setMetaDescription(request.getMetaDescription());
 

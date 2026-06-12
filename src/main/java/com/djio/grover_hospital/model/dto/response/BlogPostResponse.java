@@ -29,6 +29,7 @@ public class BlogPostResponse {
     private String featuredImage;
     private List<String> tags;
     private String metaTitle;
+    private String category;
     private String metaDescription;
     private OffsetDateTime publishedAt;
 
@@ -50,6 +51,7 @@ public class BlogPostResponse {
                 .excerpt(post.getExcerpt())
                 .featuredImage(post.getFeaturedImage())
                 .tags(parseTags(post.getTags()))
+                .category(post.getCategory())
                 .metaTitle(post.getMetaTitle())
                 .metaDescription(post.getMetaDescription())
                 .publishedAt(post.getPublishedAt());

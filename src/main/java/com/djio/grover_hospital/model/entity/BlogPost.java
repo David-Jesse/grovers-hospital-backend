@@ -41,6 +41,9 @@ public class BlogPost {
     @Column(length = 500)
     private String tags;
 
+    @Column(length = 150)
+    private String category;
+
     @Column(name = "meta_title", length = 200)
     private String metaTitle;
 

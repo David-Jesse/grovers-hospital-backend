@@ -18,15 +18,16 @@ public class BlogController {
 
     private final BlogService blogService;
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<BlogPostResponse>>> getPublishedPosts(
-            @PageableDefault(size = 10) Pageable pageable,
-            @RequestParam(required = false) String tag) {
-        return ResponseEntity.ok(ApiResponse.success(blogService.getPublishedPosts(pageable, tag)));
-    }
-
     @GetMapping("/{slug}")
     public ResponseEntity<ApiResponse<BlogPostResponse>> getPostsBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(ApiResponse.success(blogService.getPublishedPostsBySlug(slug)));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponse<BlogPostResponse>>> getPublishedPosts(
+            @PageableDefault(size = 10) Pageable pageable,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String category) {
+        return ResponseEntity.ok(ApiResponse.success(blogService.getPublishedPosts(pageable, tag, category)));
     }
 }

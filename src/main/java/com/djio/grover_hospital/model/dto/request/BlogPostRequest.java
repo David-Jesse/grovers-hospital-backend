@@ -16,6 +16,9 @@ public class BlogPostRequest {
     @Size(max = 1000)
     private String excerpt;
 
+    @Size(max = 100)
+    private String category;
+
     @NotBlank(message = "Content is required")
     private String content;
 

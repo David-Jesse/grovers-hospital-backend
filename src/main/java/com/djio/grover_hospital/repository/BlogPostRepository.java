@@ -20,6 +20,9 @@ public interface BlogPostRepository extends JpaRepository<BlogPost, Long> {
 
     long countByIsPublishedFalse();
 
+    Page<BlogPost> findByIsPublishedTrueAndCategoryIgnoreCaseOrderByPublishedAtDesc(
+            String category, Pageable pageable);
+
     Page<BlogPost> findByIsPublishedTrueAndTagsContainingIgnoreCaseOrderByPublishedAtDesc(String tag, Pageable pageable);
 
     boolean existsBySlug(String slug);
