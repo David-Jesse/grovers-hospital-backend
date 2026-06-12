@@ -108,6 +108,21 @@ public class ProfileUpdateRequestService {
         return ProfileUpdateRequestResponse.from(request);
     }
 
+    @Transactional(readOnly = true)
+    public ProfileUpdateRequestResponse getMyRequestById(Long requestId) {
+        Long patientId = SecurityUtils.getCurrentUserId();
+        ProfileUpdateRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Update request not found with id " + requestId));
+
+        if (!request.getPatient().getId().equals(patientId)) {
+            // Return 404 rather than 403 — don't confirm the resource exists
+            throw new ResourceNotFoundException("Update request not found with id " + requestId);
+        }
+
+        return ProfileUpdateRequestResponse.from(request);
+    }
+
     @Transactional
     public ProfileUpdateRequestResponse approve(Long requestId, ReviewProfileUpdateRequestDto dto,
                                                 HttpServletRequest httpRequest) {
@@ -176,7 +191,9 @@ public class ProfileUpdateRequestService {
                 .orElseThrow(() -> new UnauthorizedException("Admin session is invalid"));
     }
 
-    /** Reads the field's current value off the patient's health profile (null if no profile yet). */
+    /**
+     * Reads the field's current value off the patient's health profile (null if no profile yet).
+     */
     private String snapshotCurrentValue(Long patientId, ProfileUpdateField field) {
         return healthProfileRepository.findByPatientId(patientId)
                 .map(hp -> readField(hp, field))
@@ -192,7 +209,9 @@ public class ProfileUpdateRequestService {
         };
     }
 
-    /** Applies an approved value to the patient's health profile. Auto-creates the profile if missing. */
+    /**
+     * Applies an approved value to the patient's health profile. Auto-creates the profile if missing.
+     */
     private void applyToHealthProfile(Long patientId, ProfileUpdateField field, String value) {
         HealthProfile hp = healthProfileRepository.findByPatientId(patientId)
                 .orElseGet(() -> {

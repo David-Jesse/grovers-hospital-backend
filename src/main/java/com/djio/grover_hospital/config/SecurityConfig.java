@@ -70,6 +70,8 @@ public class SecurityConfig {
                         // Admin-only routes
                         .requestMatchers("/admin/**").hasRole("ADMIN")
 
+                        .requestMatchers("/api/v1/files/**").permitAll()
+
                         // Patient portal routes
                         .requestMatchers("/portal/**").hasRole("PATIENT")
 

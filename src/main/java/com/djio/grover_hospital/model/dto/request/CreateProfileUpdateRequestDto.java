@@ -20,11 +20,14 @@ public class CreateProfileUpdateRequestDto {
     @NotNull(message = "Target field is required")
     private ProfileUpdateField targetField;
 
-    /** Required only when targetField = OTHER. Describes which field the patient means. */
+    /**
+     * Required only when targetField = OTHER. Describes which field the patient means.
+     */
     @Size(max = 200)
     private String otherFieldDescription;
 
     @NotBlank(message = "Proposed value is required")
+    @Size(max = 500)
     private String proposedValue;
 
     @Size(max = 2000)
