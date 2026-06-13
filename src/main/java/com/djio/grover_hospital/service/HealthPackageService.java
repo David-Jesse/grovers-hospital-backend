@@ -88,6 +88,7 @@ public class HealthPackageService {
                 .description(request.getDescription())
                 .targetAudience(request.getTargetAudience())
                 .department(department)
+                .headline(request.getHeadline())
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .headingTone(request.getHeadingTone() != null ? request.getHeadingTone() : Tone.GREEN)
@@ -107,6 +108,7 @@ public class HealthPackageService {
         }
 
         healthPackage.setName(request.getName());
+        healthPackage.setHeadline(request.getHeadline());
         healthPackage.setDescription(request.getDescription());
         healthPackage.setTargetAudience(request.getTargetAudience());
         healthPackage.setDepartment(resolveDepartment(request.getDepartmentId()));

@@ -18,6 +18,9 @@ public class HealthPackageRequest {
     @Size(max = 500)
     private String targetAudience;
 
+    @Size(max = 500)
+    private String headline;
+
     private Long departmentId;
 
     private Integer displayOrder;

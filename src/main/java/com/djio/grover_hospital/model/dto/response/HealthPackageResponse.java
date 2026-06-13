@@ -38,6 +38,7 @@ public class HealthPackageResponse {
     private Long departmentId;
     private String departmentName;
     private Integer displayOrder;
+    private String headline;
     private Boolean isActive;
 
     private Tone headingTone;
@@ -70,6 +71,7 @@ public class HealthPackageResponse {
                 .departmentName(pkg.getDepartment() != null ? pkg.getDepartment().getName() : null)
                 .displayOrder(pkg.getDisplayOrder())
                 .isActive(pkg.getIsActive())
+                .headline(pkg.getHeadline())
                 .headingTone(pkg.getHeadingTone())
                 .pricingTone(pkg.getPricingTone())
                 .tiers(pkg.getTiers() == null

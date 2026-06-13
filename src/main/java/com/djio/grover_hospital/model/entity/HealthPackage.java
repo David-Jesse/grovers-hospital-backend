@@ -30,6 +30,9 @@ public class HealthPackage {
     @Column(nullable = false, unique = true, length = 200)
     private String slug;
 
+    @Column(length = 500)
+    private String headline;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
