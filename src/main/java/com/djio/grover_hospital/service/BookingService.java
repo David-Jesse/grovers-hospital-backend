@@ -65,7 +65,7 @@ public class BookingService {
                     .orElseThrow(() -> new ResourceNotFoundException("Package", "id", request.getPackageTierId()));
             booking.setHealthPackage(healthPackage);
 
-            if (request.getPackageId() != null) {
+            if (request.getPackageTierId() != null) {
                 PackageTier tier = tierRepository.findById(request.getPackageTierId())
                         .orElseThrow(() -> new ResourceNotFoundException("Package tier", "id", request.getPackageTierId()));
 

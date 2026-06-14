@@ -106,7 +106,6 @@ public class HealthPackageService {
         if (!healthPackage.getName().equals(request.getName())) {
             healthPackage.setSlug(generateUniqueSlug(request.getName(), id));
         }
-
         healthPackage.setName(request.getName());
         healthPackage.setHeadline(request.getHeadline());
         healthPackage.setDescription(request.getDescription());
