@@ -17,11 +17,7 @@ import com.djio.grover_hospital.model.entity.PackageInclusion;
 import com.djio.grover_hospital.model.entity.PackageTier;
 import com.djio.grover_hospital.model.entity.PackageTierInclusion;
 import com.djio.grover_hospital.model.enums.Tone;
-import com.djio.grover_hospital.repository.DepartmentRepository;
-import com.djio.grover_hospital.repository.HealthPackageRepository;
-import com.djio.grover_hospital.repository.PackageInclusionRepository;
-import com.djio.grover_hospital.repository.PackageTierInclusionRepository;
-import com.djio.grover_hospital.repository.PackageTierRepository;
+import com.djio.grover_hospital.repository.*;
 import com.djio.grover_hospital.util.SlugUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -45,6 +41,7 @@ public class HealthPackageService {
     private final DepartmentRepository departmentRepository;
     private final PackageInclusionRepository inclusionRepository;
     private final PackageTierInclusionRepository cellRepository;
+    private final BookingRepository bookingRepository;
 
 
     // === Public read ===
@@ -89,6 +86,7 @@ public class HealthPackageService {
                 .targetAudience(request.getTargetAudience())
                 .department(department)
                 .headline(request.getHeadline())
+                .pricingNote(request.getPricingNote())
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .headingTone(request.getHeadingTone() != null ? request.getHeadingTone() : Tone.GREEN)
@@ -109,6 +107,7 @@ public class HealthPackageService {
         healthPackage.setName(request.getName());
         healthPackage.setHeadline(request.getHeadline());
         healthPackage.setDescription(request.getDescription());
+        healthPackage.setPricingNote(request.getPricingNote());
         healthPackage.setTargetAudience(request.getTargetAudience());
         healthPackage.setDepartment(resolveDepartment(request.getDepartmentId()));
         if (request.getDisplayOrder() != null) healthPackage.setDisplayOrder(request.getDisplayOrder());
@@ -124,7 +123,19 @@ public class HealthPackageService {
         if (!packageRepository.existsById(id)) {
             throw new ResourceNotFoundException("Package", "id", id);
         }
+        if (bookingRepository.existsByHealthPackageId(id)) {
+            throw new BadRequestException("Cannot delete package: it has associated bookings. Deactivate it instead.");
+        }
         packageRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void deactivatePackage(Long id) {
+        HealthPackage pkg = packageRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Package", "id", id));
+        pkg.setIsActive(false);
+        pkg.getTiers().forEach(t -> t.setIsActive(false));
+        packageRepository.save(pkg);
     }
 
     // === Admin: tiers ===

@@ -25,6 +25,8 @@ public class HealthPackageRequest {
 
     private Integer displayOrder;
 
+    private String pricingNote;
+
     private Boolean isActive;
 
     /**

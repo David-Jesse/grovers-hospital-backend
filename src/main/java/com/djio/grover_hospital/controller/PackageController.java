@@ -22,11 +22,11 @@ public class PackageController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<HealthPackageResponse>>> getAllPackages() {
-        return ResponseEntity.ok(ApiResponse.success(packageService.getAllActive()));
+        return ResponseEntity.ok(ApiResponse.success("Packages retrieved", packageService.getAllActive()));
     }
 
     @GetMapping("/{slug}")
     public ResponseEntity<ApiResponse<HealthPackageResponse>> getPackageBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(ApiResponse.success(packageService.getBySlug(slug)));
+        return ResponseEntity.ok(ApiResponse.success("Package retrieved", packageService.getBySlug(slug)));
     }
 }

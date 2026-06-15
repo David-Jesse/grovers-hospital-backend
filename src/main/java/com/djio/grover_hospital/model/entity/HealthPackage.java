@@ -36,6 +36,9 @@ public class HealthPackage {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "pricing_note", columnDefinition = "TEXT")
+    private String pricingNote;
+
     /**
      * Nullable - when null, frontend displays "Contact for quote".
      */

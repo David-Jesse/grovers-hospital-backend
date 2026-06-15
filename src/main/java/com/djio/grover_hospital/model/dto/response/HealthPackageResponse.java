@@ -43,6 +43,7 @@ public class HealthPackageResponse {
 
     private Tone headingTone;
     private Tone pricingTone;
+    private String pricingNote;
 
     private List<PackageTierResponse> tiers;
     private List<PackageInclusionResponse> inclusions;
@@ -72,6 +73,7 @@ public class HealthPackageResponse {
                 .displayOrder(pkg.getDisplayOrder())
                 .isActive(pkg.getIsActive())
                 .headline(pkg.getHeadline())
+                .pricingNote(pkg.getPricingNote())
                 .headingTone(pkg.getHeadingTone())
                 .pricingTone(pkg.getPricingTone())
                 .tiers(pkg.getTiers() == null

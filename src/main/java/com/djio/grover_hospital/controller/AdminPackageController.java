@@ -60,6 +60,12 @@ public class AdminPackageController {
         return ResponseEntity.ok(ApiResponse.success("Package deleted", null));
     }
 
+    @PatchMapping("/{id}/deactivate")
+    public ResponseEntity<ApiResponse<Void>> deactivate(@PathVariable Long id) {
+        packageService.deactivatePackage(id);
+        return ResponseEntity.ok(ApiResponse.success("Package deactivated", null));
+    }
+
     // === Tiers ===
 
     @PostMapping("/{packageId}/tiers")
