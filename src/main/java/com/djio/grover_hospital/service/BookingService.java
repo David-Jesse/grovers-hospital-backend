@@ -14,7 +14,7 @@ import com.djio.grover_hospital.model.enums.BookingStatus;
 import com.djio.grover_hospital.model.enums.BookingType;
 import com.djio.grover_hospital.repository.*;
 import com.djio.grover_hospital.security.SecurityUtils;
-import com.djio.grover_hospital.service.notification.NotificationService;
+import com.djio.grover_hospital.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

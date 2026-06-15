@@ -1,4 +1,4 @@
-package com.djio.grover_hospital.service.notification;
+package com.djio.grover_hospital.notification;
 
 import com.djio.grover_hospital.model.entity.Booking;
 import com.djio.grover_hospital.model.entity.Feedback;

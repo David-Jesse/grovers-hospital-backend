@@ -1,4 +1,4 @@
-package com.djio.grover_hospital.service.notification;
+package com.djio.grover_hospital.notification;
 
 public enum NotificationChannel {
     EMAIL,

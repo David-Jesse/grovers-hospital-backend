@@ -1,8 +1,8 @@
 package com.djio.grover_hospital.service;
 
 import com.djio.grover_hospital.model.entity.Patient;
-import com.djio.grover_hospital.service.notification.channel.EmailMessage;
-import com.djio.grover_hospital.service.notification.sender.EmailSender;
+import com.djio.grover_hospital.notification.channel.EmailMessage;
+import com.djio.grover_hospital.notification.sender.EmailSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +23,7 @@ public class DataExportEmailService {
 
     @Value("${app.hospital.name:Grover's Hospital}")
     private String hospitalName;
+
 
     public void sendExportReadyEmail(Patient patient, String downloadUrl, OffsetDateTime expiresAt) {
         String body = """

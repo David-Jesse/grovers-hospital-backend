@@ -1,6 +1,7 @@
-package com.djio.grover_hospital.service.notification.sender;
+package com.djio.grover_hospital.notification.sender;
 
-import com.djio.grover_hospital.service.notification.channel.EmailMessage;
+import com.djio.grover_hospital.notification.channel.EmailMessage;
+import com.djio.grover_hospital.notification.core.SendResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -13,7 +14,7 @@ public class ConsoleEmailSender implements EmailSender {
     private static final String SEPARATOR = "═══════════════════════════════════════════════════════════════════════════";
 
     @Override
-    public void send(EmailMessage message) {
+    public SendResult send(EmailMessage message) {
         StringBuilder out = new StringBuilder("\n").append(SEPARATOR).append("\n");
         out.append("📧  EMAIL (console)\n").append(SEPARATOR).append("\n");
         out.append("To:        ").append(message.getTo()).append("\n");
@@ -34,5 +35,6 @@ public class ConsoleEmailSender implements EmailSender {
         out.append(SEPARATOR).append("\n");
 
         log.info(out.toString());
+        return SendResult.success("console-" + java.util.UUID.randomUUID());
     }
 }

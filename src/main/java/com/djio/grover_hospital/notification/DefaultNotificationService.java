@@ -1,4 +1,4 @@
-package com.djio.grover_hospital.service.notification;
+package com.djio.grover_hospital.notification;
 
 import com.djio.grover_hospital.model.entity.Booking;
 import com.djio.grover_hospital.model.entity.Feedback;
@@ -6,14 +6,13 @@ import com.djio.grover_hospital.model.entity.Patient;
 import com.djio.grover_hospital.model.enums.BookingStatus;
 import com.djio.grover_hospital.model.enums.FeedbackSource;
 import com.djio.grover_hospital.model.enums.PortalNotificationType;
-import com.djio.grover_hospital.security.SecurityUtils;
 import com.djio.grover_hospital.service.PortalNotificationService;
-import com.djio.grover_hospital.service.notification.channel.EmailMessage;
-import com.djio.grover_hospital.service.notification.channel.SmsMessage;
-import com.djio.grover_hospital.service.notification.channel.WhatsappMessage;
-import com.djio.grover_hospital.service.notification.sender.EmailSender;
-import com.djio.grover_hospital.service.notification.sender.SmsSender;
-import com.djio.grover_hospital.service.notification.sender.WhatsappSender;
+import com.djio.grover_hospital.notification.channel.EmailMessage;
+import com.djio.grover_hospital.notification.channel.SmsMessage;
+import com.djio.grover_hospital.notification.channel.WhatsappMessage;
+import com.djio.grover_hospital.notification.sender.EmailSender;
+import com.djio.grover_hospital.notification.sender.SmsSender;
+import com.djio.grover_hospital.notification.sender.WhatsappSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

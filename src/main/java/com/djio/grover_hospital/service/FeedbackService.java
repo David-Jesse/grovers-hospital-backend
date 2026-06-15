@@ -21,7 +21,7 @@ import com.djio.grover_hospital.repository.AdminRepository;
 import com.djio.grover_hospital.repository.FeedbackRepository;
 import com.djio.grover_hospital.repository.PatientRepository;
 import com.djio.grover_hospital.security.SecurityUtils;
-import com.djio.grover_hospital.service.notification.NotificationService;
+import com.djio.grover_hospital.notification.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

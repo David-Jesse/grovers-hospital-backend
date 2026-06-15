@@ -3,12 +3,11 @@ package com.djio.grover_hospital.service;
 import com.djio.grover_hospital.model.entity.Booking;
 import com.djio.grover_hospital.model.enums.BookingStatus;
 import com.djio.grover_hospital.repository.BookingRepository;
-import com.djio.grover_hospital.service.notification.NotificationService;
+import com.djio.grover_hospital.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.w3c.dom.stylesheets.LinkStyle;
 
 import java.time.LocalDate;
 import java.time.ZoneId;

@@ -8,7 +8,7 @@ import com.djio.grover_hospital.model.entity.Booking;
 import com.djio.grover_hospital.model.enums.BookingStatus;
 import com.djio.grover_hospital.repository.BookingRepository;
 import com.djio.grover_hospital.security.SecurityUtils;
-import com.djio.grover_hospital.service.notification.NotificationService;
+import com.djio.grover_hospital.notification.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

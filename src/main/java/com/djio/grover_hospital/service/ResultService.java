@@ -14,7 +14,7 @@ import com.djio.grover_hospital.model.entity.*;
 import com.djio.grover_hospital.model.enums.ResultStatus;
 import com.djio.grover_hospital.repository.*;
 import com.djio.grover_hospital.security.SecurityUtils;
-import com.djio.grover_hospital.service.notification.NotificationService;
+import com.djio.grover_hospital.notification.NotificationService;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
