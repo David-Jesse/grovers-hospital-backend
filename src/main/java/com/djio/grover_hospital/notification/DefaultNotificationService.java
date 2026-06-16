@@ -4,8 +4,11 @@ import com.djio.grover_hospital.model.entity.Booking;
 import com.djio.grover_hospital.model.entity.Feedback;
 import com.djio.grover_hospital.model.entity.Patient;
 import com.djio.grover_hospital.model.enums.BookingStatus;
+import com.djio.grover_hospital.model.enums.DeliveryChannel;
 import com.djio.grover_hospital.model.enums.FeedbackSource;
 import com.djio.grover_hospital.model.enums.PortalNotificationType;
+import com.djio.grover_hospital.notification.core.SendResult;
+import com.djio.grover_hospital.service.NotificationDeliveryLogService;
 import com.djio.grover_hospital.service.PortalNotificationService;
 import com.djio.grover_hospital.notification.channel.EmailMessage;
 import com.djio.grover_hospital.notification.channel.SmsMessage;
@@ -24,6 +27,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Orchestrates external channels (email / SMS / WhatsApp) AND drops a record
@@ -55,6 +59,7 @@ public class DefaultNotificationService implements NotificationService {
     private final WhatsappSender whatsappSender;
     private final PortalNotificationService portalNotificationService;
     private final NotificationPreferenceService notificationPreferenceService;
+    private final NotificationDeliveryLogService deliveryLogService;
 
     @Value("${app.hospital.name:Grover's Hospital}")
     private String hospitalName;
@@ -101,16 +106,21 @@ public class DefaultNotificationService implements NotificationService {
 
         if (bookingConfirmEmail
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
-            sendSafely("booking-confirm-email", () -> emailSender.send(EmailMessage.builder()
-                    .to(patient.getEmail())
-                    .subject("Booking Received — #" + booking.getId())
-                    .textBody(buildBookingConfirmationEmailBody(booking))
-                    .build()));
+            sendAndLog("booking-confirm-email",
+                    patientId, "BOOKING_CONFIRMATION", "BOOKING", booking.getId(),
+                    DeliveryChannel.EMAIL, patient.getEmail(),
+                    () -> emailSender.send(EmailMessage.builder()
+                            .to(patient.getEmail())
+                            .subject("Booking Received — #" + booking.getId())
+                            .textBody(buildBookingConfirmationEmailBody(booking))
+                            .build()));
         }
 
         if (bookingConfirmSms && hasPhone(patient)
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
-            sendSafely("booking-confirm-sms", () -> smsSender.send(SmsMessage.builder()
+            sendAndLog("booking-confirm-sms", patientId, "BOOKING_CONFIRMATION", "BOOKING", booking.getId(),
+                    DeliveryChannel.SMS, patient.getPhone(),
+                    () -> smsSender.send(SmsMessage.builder()
                     .toPhoneNumber(patient.getPhone())
                     .text(buildBookingConfirmationSmsText(booking))
                     .build()));
@@ -118,7 +128,11 @@ public class DefaultNotificationService implements NotificationService {
 
         if (bookingConfirmWhatsapp && hasWhatsappTarget(patient)
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
-            sendSafely("booking-confirm-whatsapp", () -> whatsappSender.send(WhatsappMessage.builder()
+
+            sendAndLog("booking-confirm-whatsapp", patientId, "BOOKING_CONFIRMATION",
+                    "BOOKING",
+                    booking.getId(), DeliveryChannel.WHATSAPP, resolveWhatsappNumber(patient),
+                    () -> whatsappSender.send(WhatsappMessage.builder()
                     .toPhoneNumber(resolveWhatsappNumber(patient))
                     .templateName("booking_received")
                     .templateParams(List.of(
@@ -181,38 +195,43 @@ public class DefaultNotificationService implements NotificationService {
 
         if (statusUpdateEmail
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
-            sendSafely("booking-status-email", () -> emailSender.send(EmailMessage.builder()
-                    .to(patient.getEmail())
-                    .subject("Booking Update — #" + booking.getId() + " — " + booking.getStatus().name())
-                    .textBody(buildStatusUpdateEmailBody(booking))
-                    .build()));
+            sendAndLog("booking-status-email",
+                    patientId, "BOOKING_STATUS_UPDATE", "BOOKING", booking.getId(),
+                    DeliveryChannel.EMAIL, patient.getEmail(),
+                    () -> emailSender.send(EmailMessage.builder()
+                            .to(patient.getEmail())
+                            .subject("Booking Update — #" + booking.getId() + " — " + booking.getStatus().name())
+                            .textBody(buildStatusUpdateEmailBody(booking))
+                            .build()));
         }
 
         if (statusUpdateSms && hasPhone(patient)
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
-            sendSafely("booking-status-sms", () -> smsSender.send(SmsMessage.builder()
-                    .toPhoneNumber(patient.getPhone())
-                    .text(buildStatusUpdateShortText(booking))
-                    .build()));
+            sendAndLog("booking-status-sms",
+                    patientId, "BOOKING_STATUS_UPDATE", "BOOKING", booking.getId(),
+                    DeliveryChannel.SMS, patient.getPhone(),
+                    () -> smsSender.send(SmsMessage.builder()
+                            .toPhoneNumber(patient.getPhone())
+                            .text(buildStatusUpdateShortText(booking))
+                            .build()));
         }
 
         if (statusUpdateWhatsapp && hasWhatsappTarget(patient)
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
-            sendSafely("booking-status-whatsapp", () -> whatsappSender.send(WhatsappMessage.builder()
-                    .toPhoneNumber(resolveWhatsappNumber(patient))
-                    .templateName("booking_status_update")
-                    .templateParams(List.of(
-                            patient.getFirstName(),
-                            String.valueOf(booking.getId()),
-                            booking.getStatus().name()
-                    ))
-                    .text(buildStatusUpdateShortText(booking))
-                    .build()));
+            sendAndLog("booking-status-whatsapp",
+                    patientId, "BOOKING_STATUS_UPDATE", "BOOKING", booking.getId(),
+                    DeliveryChannel.WHATSAPP, resolveWhatsappNumber(patient),
+                    () -> whatsappSender.send(WhatsappMessage.builder()
+                            .toPhoneNumber(resolveWhatsappNumber(patient))
+                            .templateName("booking_status_update")
+                            .templateParams(List.of(
+                                    patient.getFirstName(),
+                                    String.valueOf(booking.getId()),
+                                    booking.getStatus().name()
+                            ))
+                            .text(buildStatusUpdateShortText(booking))
+                            .build()));
         }
-        boolean waPrefAllows = notificationPreferenceService.shouldSend(
-                patientId, event, NotificationChannel.WHATSAPP);
-        log.info("DEBUG status-update whatsapp gate for patient {}: appToggle={} prefAllows={}",
-                patientId, statusUpdateWhatsapp, waPrefAllows);
 
         // In-portal notification — always fires
         PortalNotificationType portalType = mapStatusToPortalType(booking.getStatus());
@@ -225,49 +244,56 @@ public class DefaultNotificationService implements NotificationService {
     @Override
     @Async
     public void notifyAppointmentReminderToPatient(Booking booking) {
-            Patient patient = booking.getPatient();
-            Long patientId = patient.getId();
-            // Reuse the booking-status-update preference toggles for reminders
-            NotificationEvent event = NotificationEvent.BOOKING_STATUS_UPDATE;
+        Patient patient = booking.getPatient();
+        Long patientId = patient.getId();
+        // Reuse the booking-status-update preference toggles for reminders
+        NotificationEvent event = NotificationEvent.BOOKING_STATUS_UPDATE;
 
-            if (statusUpdateEmail
-                    && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
-                sendSafely("appointment-reminder-email", () -> emailSender.send(EmailMessage.builder()
-                        .to(patient.getEmail())
-                        .subject("Reminder: your appointment is tomorrow — #" + booking.getId())
-                        .textBody(buildReminderEmailBody(booking))
-                        .build()));
-            }
+        if (statusUpdateEmail
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
+            sendAndLog("appointment-reminder-email",
+                    patientId, "APPOINTMENT_REMINDER", "BOOKING", booking.getId(),
+                    DeliveryChannel.EMAIL, patient.getEmail(),
+                    () -> emailSender.send(EmailMessage.builder()
+                            .to(patient.getEmail())
+                            .subject("Reminder: your appointment is tomorrow — #" + booking.getId())
+                            .textBody(buildReminderEmailBody(booking))
+                            .build()));
+        }
 
-            if (statusUpdateSms && hasPhone(patient)
-                    && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
-                sendSafely("appointment-reminder-sms", () -> smsSender.send(SmsMessage.builder()
-                        .toPhoneNumber(patient.getPhone())
-                        .text("Reminder: Hi " + patient.getFirstName() + ", your booking #" + booking.getId() +
-                                " is tomorrow (" + booking.getPreferredDate().format(DATE_FMT) + "). — " + hospitalName)
-                        .build()));
-            }
+        if (statusUpdateSms && hasPhone(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
+            sendAndLog("appointment-reminder-sms",
+                    patientId, "APPOINTMENT_REMINDER", "BOOKING", booking.getId(),
+                    DeliveryChannel.SMS, patient.getPhone(),
+                    () -> smsSender.send(SmsMessage.builder()
+                            .toPhoneNumber(patient.getPhone())
+                            .text("Reminder: Hi " + patient.getFirstName() + ", your booking #" + booking.getId() +
+                                    " is tomorrow (" + booking.getPreferredDate().format(DATE_FMT) + "). — " + hospitalName)
+                            .build()));
+        }
 
-            if (statusUpdateWhatsapp && hasWhatsappTarget(patient)
-                    && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
-                sendSafely("appointment-reminder-whatsapp", () -> whatsappSender.send(WhatsappMessage.builder()
-                        .toPhoneNumber(resolveWhatsappNumber(patient))
-                        .templateName("appointment_reminder")
-                        .templateParams(List.of(
-                                patient.getFirstName(),
-                                String.valueOf(booking.getId()),
-                                booking.getPreferredDate().format(DATE_FMT)
-                        ))
-                        .text("Reminder: Hi " + patient.getFirstName() + ", your booking #" + booking.getId() +
-                                " is tomorrow (" + booking.getPreferredDate().format(DATE_FMT) + ").")
-                        .build()));
-            }
+        if (statusUpdateWhatsapp && hasWhatsappTarget(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
+            sendAndLog("appointment-reminder-whatsapp",
+                    patientId, "APPOINTMENT_REMINDER", "BOOKING", booking.getId(),
+                    DeliveryChannel.WHATSAPP, resolveWhatsappNumber(patient),
+                    () -> whatsappSender.send(WhatsappMessage.builder()
+                            .toPhoneNumber(resolveWhatsappNumber(patient))
+                            .templateName("appointment_reminder")
+                            .templateParams(List.of(
+                                    patient.getFirstName(),
+                                    String.valueOf(booking.getId()),
+                                    booking.getPreferredDate().format(DATE_FMT)
+                            ))
+                            .text("Reminder: Hi " + patient.getFirstName() + ", your booking #" + booking.getId() +
+                                    " is tomorrow (" + booking.getPreferredDate().format(DATE_FMT) + ").")
+                            .build()));
+        }
 
         // In-portal bell notification — always fires
         sendSafely("appointment-reminder-portal", () -> portalNotificationService.createForPatient(
                 patient.getId(),
-                // Reuse an existing portal type. If you have a dedicated
-                // APPOINTMENT_REMINDER type in PortalNotificationType, use that instead.
                 com.djio.grover_hospital.model.enums.PortalNotificationType.BOOKING_CONFIRMED,
                 String.format("Reminder: your booking #%d is scheduled for tomorrow, %s.",
                         booking.getId(), booking.getPreferredDate().format(DATE_FMT))));
@@ -283,29 +309,38 @@ public class DefaultNotificationService implements NotificationService {
 
         if (resultReadyEmail
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
-            sendSafely("result-ready-email", () -> emailSender.send(EmailMessage.builder()
-                    .to(patient.getEmail())
-                    .subject("Your medical result is ready")
-                    .textBody(buildResultReadyEmailBody(patient, resultTitle))
-                    .build()));
+            sendAndLog("result-ready-email",
+                    patientId, "RESULT_READY", null, null,
+                    DeliveryChannel.EMAIL, patient.getEmail(),
+                    () -> emailSender.send(EmailMessage.builder()
+                            .to(patient.getEmail())
+                            .subject("Your medical result is ready")
+                            .textBody(buildResultReadyEmailBody(patient, resultTitle))
+                            .build()));
         }
 
         if (resultReadySms && hasPhone(patient)
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
-            sendSafely("result-ready-sms", () -> smsSender.send(SmsMessage.builder()
-                    .toPhoneNumber(patient.getPhone())
-                    .text("Hi " + patient.getFirstName() + ", your result is ready. Log in to your portal to view it. — " + hospitalName)
-                    .build()));
+            sendAndLog("result-ready-sms",
+                    patientId, "RESULT_READY", null, null,
+                    DeliveryChannel.SMS, patient.getPhone(),
+                    () -> smsSender.send(SmsMessage.builder()
+                            .toPhoneNumber(patient.getPhone())
+                            .text("Hi " + patient.getFirstName() + ", your result is ready. Log in to your portal to view it. — " + hospitalName)
+                            .build()));
         }
 
         if (resultReadyWhatsapp && hasWhatsappTarget(patient)
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
-            sendSafely("result-ready-whatsapp", () -> whatsappSender.send(WhatsappMessage.builder()
-                    .toPhoneNumber(resolveWhatsappNumber(patient))
-                    .templateName("result_ready")
-                    .templateParams(List.of(patient.getFirstName(), resultTitle))
-                    .text("Hi " + patient.getFirstName() + ", your result \"" + resultTitle + "\" is ready in your portal.")
-                    .build()));
+            sendAndLog("result-ready-whatsapp",
+                    patientId, "RESULT_READY", null, null,
+                    DeliveryChannel.WHATSAPP, resolveWhatsappNumber(patient),
+                    () -> whatsappSender.send(WhatsappMessage.builder()
+                            .toPhoneNumber(resolveWhatsappNumber(patient))
+                            .templateName("result_ready")
+                            .templateParams(List.of(patient.getFirstName(), resultTitle))
+                            .text("Hi " + patient.getFirstName() + ", your result \"" + resultTitle + "\" is ready in your portal.")
+                            .build()));
         }
 
         // In-portal notification — always fires
@@ -314,29 +349,31 @@ public class DefaultNotificationService implements NotificationService {
                 PortalNotificationType.RESULT_READY,
                 String.format("Your result \"%s\" is ready to view in your portal.", resultTitle)));
     }
-
     // ===== Password reset (email only — security best practice) =====
     // NOT gated by patient prefs — security email, must always send.
 
     @Override
     @Async
     public void notifyPasswordResetLink(Patient patient, String resetToken) {
-        sendSafely("password-reset-email", () -> emailSender.send(EmailMessage.builder()
-                .to(patient.getEmail())
-                .subject("Reset your password")
-                .textBody("""
-                        Hello %s,
+        sendAndLog("password-reset-email",
+                patient.getId(), "PASSWORD_RESET", null, null,
+                DeliveryChannel.EMAIL, patient.getEmail(),
+                () -> emailSender.send(EmailMessage.builder()
+                        .to(patient.getEmail())
+                        .subject("Reset your password")
+                        .textBody("""
+                            Hello %s,
 
-                        A password reset was requested for your account. Use the link below
-                        to set a new password. This link expires in 30 minutes.
+                            A password reset was requested for your account. Use the link below
+                            to set a new password. This link expires in 30 minutes.
 
-                        Reset token: %s
+                            Reset token: %s
 
-                        If you didn't request this, you can safely ignore this email.
+                            If you didn't request this, you can safely ignore this email.
 
-                        — %s
-                        """.formatted(patient.getFirstName(), resetToken, hospitalName))
-                .build()));
+                            — %s
+                            """.formatted(patient.getFirstName(), resetToken, hospitalName))
+                        .build()));
 
         // Intentionally NO in-portal notification — password reset doesn't need a UI badge,
         // and dropping the token into a notification record would weaken security.
@@ -586,6 +623,34 @@ public class DefaultNotificationService implements NotificationService {
             sendAction.run();
         } catch (Exception ex) {
             log.error("Notification dispatch failed [{}]: {}", label, ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Patient-bound version of sendSafely that captures the SendResult and writes it to
+     * notification_delivery_logs. Failures (exceptions OR provider-reported failures) get
+     * logged with status=FAILED. Never throws — channel failures stay isolated.
+     */
+    private void sendAndLog(String label,
+                            Long patientId,
+                            String eventName,
+                            String referenceType,
+                            Long referenceId,
+                            DeliveryChannel channel,
+                            String recipient,
+                            Supplier<SendResult> sendAction) {
+        SendResult result;
+        try {
+            result = sendAction.get();
+        } catch (Exception ex) {
+            log.error("Notification dispatch failed [{}]: {}", label, ex.getMessage(), ex);
+            result = SendResult.failure("Exception: " + ex.getMessage());
+        }
+        try {
+            deliveryLogService.record(patientId, eventName, referenceType, referenceId,
+                    channel, recipient, result);
+        } catch (Exception logEx) {
+            log.error("Failed to record delivery log for [{}]: {}", label, logEx.getMessage());
         }
     }
 }

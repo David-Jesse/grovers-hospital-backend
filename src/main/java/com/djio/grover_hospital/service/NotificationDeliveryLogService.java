@@ -4,7 +4,6 @@ import com.djio.grover_hospital.model.dto.response.NotificationDeliveryLogRespon
 import com.djio.grover_hospital.model.entity.NotificationDeliveryLog;
 import com.djio.grover_hospital.model.enums.DeliveryChannel;
 import com.djio.grover_hospital.model.enums.DeliveryStatus;
-import com.djio.grover_hospital.model.enums.NotificationEvent;
 import com.djio.grover_hospital.notification.core.SendResult;
 import com.djio.grover_hospital.repository.NotificationDeliveryLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +38,7 @@ public class NotificationDeliveryLogService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public NotificationDeliveryLog record(Long patientId,
-                                          NotificationEvent event,
+                                          String eventName,
                                           String referenceType,
                                           Long referenceId,
                                           DeliveryChannel channel,
@@ -49,7 +48,7 @@ public class NotificationDeliveryLogService {
 
         NotificationDeliveryLog logRow = NotificationDeliveryLog.builder()
                 .patientId(patientId)
-                .eventName(event.name())
+                .eventName(eventName)
                 .referenceType(referenceType)
                 .referenceId(referenceId)
                 .channel(channel)

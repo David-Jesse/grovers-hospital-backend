@@ -14,7 +14,7 @@ public class ConsoleWhatsappSender implements WhatsappSender {
     private static final String SEPARATOR = "─────────────────────────────────────────────";
 
     @Override
-    public void send(WhatsappMessage message) {
+    public SendResult send(WhatsappMessage message) {
         StringBuilder out = new StringBuilder("\n").append(SEPARATOR).append("\n");
         out.append("📱  WHATSAPP (console)\n").append(SEPARATOR).append("\n");
         out.append("To:        ").append(message.getToPhoneNumber()).append("\n");
@@ -32,5 +32,6 @@ public class ConsoleWhatsappSender implements WhatsappSender {
         out.append(SEPARATOR).append("\n");
 
         log.info(out.toString());
+        return null;
     }
 }
