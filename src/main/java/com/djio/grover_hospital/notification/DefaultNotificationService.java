@@ -73,6 +73,9 @@ public class DefaultNotificationService implements NotificationService {
     @Value("${app.hospital.contact-phone:+234 ___ ___ ____}")
     private String contactPhone;
 
+    @Value("${app.frontend.base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
+
     // Channel toggles per event
     @Value("${app.notification.events.booking-confirmation.email:true}")
     private boolean bookingConfirmEmail;
@@ -355,6 +358,8 @@ public class DefaultNotificationService implements NotificationService {
     @Override
     @Async
     public void notifyPasswordResetLink(Patient patient, String resetToken) {
+        String resetUrl = frontendBaseUrl + "/reset-password?token=" + resetToken;
+
         sendAndLog("password-reset-email",
                 patient.getId(), "PASSWORD_RESET", null, null,
                 DeliveryChannel.EMAIL, patient.getEmail(),
@@ -372,7 +377,7 @@ public class DefaultNotificationService implements NotificationService {
                             If you didn't request this, you can safely ignore this email.
 
                             — %s
-                            """.formatted(patient.getFirstName(), resetToken, hospitalName))
+                            """.formatted(patient.getFirstName(), resetUrl, hospitalName))
                         .build()));
 
         // Intentionally NO in-portal notification — password reset doesn't need a UI badge,
