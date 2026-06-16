@@ -31,12 +31,12 @@ public class AdminPackageController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<HealthPackageResponse>>> list() {
-        return ResponseEntity.ok(ApiResponse.success(packageService.getAllForAdmin()));
+        return ResponseEntity.ok(ApiResponse.success("Packages retrieved",  packageService.getAllForAdmin()));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<HealthPackageResponse>> getOne(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(packageService.getById(id)));
+        return ResponseEntity.ok(ApiResponse.success("Package retrieved",  packageService.getById(id)));
     }
 
     @PostMapping
