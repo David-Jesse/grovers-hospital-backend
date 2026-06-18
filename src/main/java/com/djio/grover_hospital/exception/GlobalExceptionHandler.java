@@ -9,11 +9,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -69,7 +73,32 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("File size exceeds the maximum allowed limit"));
+                .body(ApiResponse.error("File too large. Maximum allowed: 10MB."));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingParam(MissingServletRequestParameterException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Missing required parameter: " + ex.getParameterName()));
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingPart(MissingServletRequestPartException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Missing required multipart field: " + ex.getRequestPartName()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadable(HttpMessageNotReadableException ex) {
+        // Covers: bad JSON, bad enum values, bad date formats, missing request body
+        String message = "Invalid request body";
+        if (ex.getMostSpecificCause() != null && ex.getMostSpecificCause().getMessage() != null) {
+            String detail = ex.getMostSpecificCause().getMessage();
+            // Trim noisy class-path prefixes for a cleaner message
+            if (detail.length() < 200) message = "Invalid request: " + detail;
+        }
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error(message));
     }
 
     @ExceptionHandler(Exception.class)

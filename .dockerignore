@@ -1,0 +1,12 @@
+@'
+target/
+.idea/
+.vscode/
+*.iml
+.git/
+.gitignore
+uploads/
+*.md
+README*
+HELP*
+'@ | Out-File -Encoding ascii -FilePath .dockerignore -NoNewline

@@ -97,6 +97,12 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.cloud.sql</groupId>
+            <artifactId>postgres-socket-factory</artifactId>
+            <version>1.21.0</version>
+        </dependency>
+
         <!-- Implementation -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

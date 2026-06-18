@@ -13,6 +13,8 @@ import com.djio.grover_hospital.model.dto.response.ResultResponse;
 import com.djio.grover_hospital.model.entity.*;
 import com.djio.grover_hospital.model.enums.ResultStatus;
 import com.djio.grover_hospital.repository.*;
+import com.djio.grover_hospital.security.JwtTokenProvider;
+import com.djio.grover_hospital.security.ResultDownloadToken;
 import com.djio.grover_hospital.security.SecurityUtils;
 import com.djio.grover_hospital.notification.NotificationService;
 import jakarta.annotation.PostConstruct;
@@ -54,9 +56,13 @@ public class ResultService {
     private final EncryptionService encryptionService;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Value("${app.result-storage.upload-dir:./uploads/results}")
     private String uploadDir;
+
+    @Value("${app.result-download.base-url}")
+    private String resultDownloadBaseUrl;
 
     private Path uploadRoot;
 
@@ -208,13 +214,41 @@ public class ResultService {
 
     // ==== Patient or admin: download a specific file ====
 
-    public DecryptedFileStream downloadFileForPatient(Long resultId, Long fileId, HttpServletRequest httpRequest) {
+    @Transactional
+    public void requestResultDownloadLink(Long resultId, HttpServletRequest httpRequest) {
         Long patientId = SecurityUtils.getCurrentUserId();
         Result result = loadResultForPatient(resultId, patientId);
 
-        ResultFile file = findFileInResult(result, fileId);
+        if (result.getFiles() == null || result.getFiles().isEmpty()) {
+            throw new BadRequestException("This result has no downloadable file");
+        }
+        ResultFile file = result.getFiles().get(0);
 
-        auditService.log(patientId, "PATIENT", "DOWNLOAD_RESULT_FILE", "RESULT_FILE", fileId, httpRequest);
+        String token = jwtTokenProvider.generateResultDownloadToken(patientId, resultId, file.getId());
+        String downloadUrl = resultDownloadBaseUrl + "/public/results/download?token=" + token;
+
+        notificationService.notifyResultDownloadLink(result.getPatient(), result.getTitle(), downloadUrl);
+
+        auditService.log(patientId, "PATIENT", "REQUEST_RESULT_DOWNLOAD_LINK",
+                "RESULT_FILE", file.getId(), httpRequest);
+    }
+
+    @Transactional
+    public DecryptedFileStream downloadByToken(String token, HttpServletRequest httpRequest) {
+        ResultDownloadToken claims;
+        try {
+            claims = jwtTokenProvider.parseResultDownloadToken(token);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            throw new BadRequestException("Download link has expired. Please request a new one.");
+        } catch (Exception e) {
+            throw new BadRequestException("Invalid download link.");
+        }
+
+        Result result = loadResultForPatient(claims.resultId(), claims.patientId());
+        ResultFile file = findFileInResult(result, claims.fileId());
+
+        auditService.log(claims.patientId(), "PATIENT", "DOWNLOAD_RESULT_FILE_VIA_TOKEN",
+                "RESULT_FILE", claims.fileId(), httpRequest);
 
         return openDecryptedStream(file);
     }

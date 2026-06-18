@@ -384,6 +384,20 @@ public class DefaultNotificationService implements NotificationService {
         // and dropping the token into a notification record would weaken security.
     }
 
+    @Override
+    @Async
+    public void notifyResultDownloadLink(Patient patient, String resultTitle, String downloadUrl) {
+        // Always send — patient explicitly requested this download link
+        sendAndLog("result-download-link",
+                patient.getId(), "RESULT_DOWNLOAD_LINK", null, null,
+                DeliveryChannel.EMAIL, patient.getEmail(),
+                () -> emailSender.send(EmailMessage.builder()
+                        .to(patient.getEmail())
+                        .subject("Your result download link — " + resultTitle)
+                        .textBody(buildResultDownloadEmailBody(patient, resultTitle, downloadUrl))
+                        .build()));
+    }
+
     // ===== Feedback received (admin alert) =====
     // NOT gated by patient prefs — this is for admins.
 
@@ -485,6 +499,21 @@ public class DefaultNotificationService implements NotificationService {
                 booking.getBookingType().name(), bookingTargetLine(booking),
                 booking.getPreferredDate().format(DATE_FMT),
                 booking.getNotes() != null && !booking.getNotes().isBlank() ? booking.getNotes() : "(none)");
+    }
+
+    private String buildResultDownloadEmailBody(Patient patient, String resultTitle, String downloadUrl) {
+        return """
+            Hello %s,
+
+            Here's the secure download link for your result: "%s"
+
+            %s
+
+            For your security, this link expires in 30 minutes. If you didn't request this,
+            you can safely ignore this email.
+
+            — %s
+            """.formatted(patient.getFirstName(), resultTitle, downloadUrl, hospitalName);
     }
 
     private String buildStatusUpdateEmailBody(Booking booking) {

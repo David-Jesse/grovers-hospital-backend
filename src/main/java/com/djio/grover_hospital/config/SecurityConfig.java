@@ -75,6 +75,8 @@ public class SecurityConfig {
                         // Patient portal routes
                         .requestMatchers("/portal/**").hasRole("PATIENT")
 
+                        .requestMatchers("/public/**").permitAll()
+
                         // Everything else requires authentication
                         .anyRequest().authenticated()
                 )

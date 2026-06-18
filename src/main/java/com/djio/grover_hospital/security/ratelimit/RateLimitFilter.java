@@ -37,6 +37,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final Map<String, BucketHolder> loginBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketHolder> registerBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketHolder> passwordResetBuckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketHolder> downloadRequestBuckets = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -98,6 +99,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return obtain(passwordResetBuckets, ip,
                     properties.getPasswordResetRequestsPer5Min(), Duration.ofMinutes(5));
         }
+        if (path.contains("/email-link")) {
+            return obtain(downloadRequestBuckets, ip,
+                    properties.getDownloadRequestRequestsPer5Min(), Duration.ofMinutes(5));
+        }
+
         return null;
     }
 
@@ -135,6 +141,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         removed += removeStale(loginBuckets, cutoff);
         removed += removeStale(registerBuckets, cutoff);
         removed += removeStale(passwordResetBuckets, cutoff);
+        removed += removeStale(downloadRequestBuckets, cutoff);
         if (removed > 0) {
             log.info("Rate-limit prune: removed {} idle bucket entries", removed);
         }

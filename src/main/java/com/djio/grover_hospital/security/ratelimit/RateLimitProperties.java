@@ -22,4 +22,7 @@ public class RateLimitProperties {
 
     /** Password reset requests per 5 minutes per IP. */
     private int passwordResetRequestsPer5Min = 3;
+
+    /** Download link requests per 5 minutes per IP. */
+    private int downloadRequestRequestsPer5Min = 5;
 }

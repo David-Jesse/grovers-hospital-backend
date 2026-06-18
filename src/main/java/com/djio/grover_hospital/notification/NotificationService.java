@@ -26,6 +26,8 @@ public interface NotificationService {
 
     void notifyAppointmentReminderToPatient(Booking booking);
 
+    void notifyResultDownloadLink(Patient patient, String resultTitle, String downloadUrl);
+
     /**
      * Send to hospital when new feedback arrives (homepage form or patient portal)
      */

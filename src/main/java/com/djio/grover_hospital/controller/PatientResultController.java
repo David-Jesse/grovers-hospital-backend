@@ -6,6 +6,7 @@ import com.djio.grover_hospital.model.dto.response.DecryptedFileStream;
 import com.djio.grover_hospital.model.dto.response.PageResponse;
 import com.djio.grover_hospital.model.dto.response.ResultResponse;
 import com.djio.grover_hospital.service.ResultService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
@@ -14,10 +15,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/portal/results")
@@ -38,24 +36,17 @@ public class PatientResultController {
         return ResponseEntity.ok(ApiResponse.success(resultService.getMyResultById(id, httpRequest)));
     }
 
-    @GetMapping("/{resultId}/files/{fileId}/download")
-    public ResponseEntity<InputStreamResource> downloadFile(
+    @PostMapping("/{resultId}/email-link")
+    @Operation(summary = "Email a secure download link for the result",
+            description = "Sends a 30-minute signed download link to your registered email. " +
+                    "If the result has multiple files, the first file's link is sent.")
+    public ResponseEntity<ApiResponse<Void>> requestDownloadLink(
             @PathVariable Long resultId,
-            @PathVariable Long fileId,
-            HttpServletRequest httpRequest
-    ) {
-        DecryptedFileStream stream = resultService.downloadFileForPatient(resultId, fileId, httpRequest);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentDisposition(
-                org.springframework.http.ContentDisposition.attachment()
-                        .filename(stream.getOriginalFileName())
-                        .build());
-        headers.setCacheControl("no-store");
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .contentType(MediaType.parseMediaType(stream.getContentType()))
-                .body(new InputStreamResource(stream.getStream()));
+            HttpServletRequest httpRequest) {
+        resultService.requestResultDownloadLink(resultId, httpRequest);
+        return ResponseEntity.accepted()
+                .body(ApiResponse.success(
+                        "A download link has been sent to your email. It expires in 30 minutes.",
+                        null));
     }
 }
