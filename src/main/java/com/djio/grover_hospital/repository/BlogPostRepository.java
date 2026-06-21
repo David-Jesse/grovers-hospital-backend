@@ -18,6 +18,10 @@ public interface BlogPostRepository extends JpaRepository<BlogPost, Long> {
 
     Page<BlogPost> findByIsPublishedTrueOrderByPublishedAtDesc(Pageable pageable);
 
+    Page<BlogPost> findAllByPublishedAtIsNotNull(Pageable pageable);
+
+    Optional<BlogPost> findByIdAndPublishedAtIsNotNull(Long id);
+
     long countByIsPublishedFalse();
 
     Page<BlogPost> findByIsPublishedTrueAndCategoryIgnoreCaseOrderByPublishedAtDesc(

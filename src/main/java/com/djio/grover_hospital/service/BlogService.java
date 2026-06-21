@@ -61,6 +61,24 @@ public class BlogService {
         return PageResponse.from(page, BlogPostResponse::fromList);
     }
 
+    // public facing
+    public PageResponse<BlogPostResponse> getAllPublished(Pageable pageable) {
+        Pageable sortedByCreated = pageable.getSort().isSorted() ? pageable :
+                org.springframework.data.domain.PageRequest.of(
+                        pageable.getPageNumber(), pageable.getPageSize(),
+                        Sort.by(Sort.Direction.DESC, "createdAt")
+                );
+        Page<BlogPost> page = blogPostRepository.findAllByPublishedAtIsNotNull(sortedByCreated);
+        return PageResponse.from(page, BlogPostResponse::fromList);
+    }
+
+    public BlogPostResponse getPublishedById(Long id) {
+        BlogPost post = blogPostRepository.findByIdAndPublishedAtIsNotNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("post", "id", id));
+
+        return BlogPostResponse.fromDetail(post);
+    }
+
     public BlogPostResponse getByIdForAdmin(Long id) {
         BlogPost post = blogPostRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Blog post", "id", id));
@@ -147,6 +165,7 @@ public class BlogService {
 
         blogPostRepository.deleteById(id);
     }
+
 
     // === Helper ===
 
