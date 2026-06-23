@@ -4,6 +4,8 @@ import com.djio.grover_hospital.model.entity.Booking;
 import com.djio.grover_hospital.model.entity.Feedback;
 import com.djio.grover_hospital.model.entity.Patient;
 
+import java.time.LocalDate;
+
 /**
  * High-level notification service used by business logic.
  * Each method represents a business event and internally decides
@@ -20,11 +22,13 @@ public interface NotificationService {
 
     void notifyBookingStatusUpdateToPatient(Booking booking);
 
-    void notifyResultReady(Patient patient, String resultTitle);
+    void notifyResultReady(Patient patient, String resultTitle, LocalDate requestedDate);
 
     void notifyPasswordResetLink(Patient patient, String resetToken);
 
     void notifyAppointmentReminderToPatient(Booking booking);
+
+    void notifyAppointmentTimeChanged(Booking booking, java.time.LocalTime previousTime, String reason);
 
     void notifyResultDownloadLink(Patient patient, String resultTitle, String downloadUrl);
 

@@ -6,6 +6,8 @@ import com.djio.grover_hospital.exception.ResourceNotFoundException;
 import com.djio.grover_hospital.exception.UnauthorizedException;
 import com.djio.grover_hospital.model.dto.request.BookingRequest;
 import com.djio.grover_hospital.model.dto.request.BookingStatusUpdateRequest;
+import com.djio.grover_hospital.model.dto.request.ConfirmBookingRequest;
+import com.djio.grover_hospital.model.dto.request.UpdateAppointmentTimeRequest;
 import com.djio.grover_hospital.model.dto.response.AdminBookingResponse;
 import com.djio.grover_hospital.model.dto.response.BookingResponse;
 import com.djio.grover_hospital.model.dto.response.PageResponse;
@@ -22,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -35,6 +39,7 @@ public class BookingService {
     private final HealthPackageRepository packageRepository;
     private final NotificationService notificationService;
     private final PackageTierRepository tierRepository;
+    private final DepartmentScheduleService departmentScheduleService;
 
     // ==== Patient operations ====
 
@@ -54,6 +59,13 @@ public class BookingService {
                 .notes(request.getNotes())
                 .status(BookingStatus.PENDING)
                 .build();
+
+        if (booking.getDepartment() != null) {
+            departmentScheduleService.validateBookingDayAvailable(
+                    booking.getDepartment().getId(),
+                    booking.getPreferredDate().getDayOfWeek()
+            );
+        }
 
         // Wire up the right targets based on booking type
         if (request.getBookingType() == BookingType.CONSULTATION) {
@@ -183,6 +195,72 @@ public class BookingService {
         }
 
         return AdminBookingResponse.from(updated);
+    }
+
+    @Transactional
+    public BookingResponse updateAppointmentTime(Long bookingId, UpdateAppointmentTimeRequest request) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new BadRequestException(
+                    "Only CONFIRMED bookings can have their time changed. Current status: " + booking.getStatus()
+            );
+        }
+
+        if (booking.getDepartment() != null) {
+            departmentScheduleService.validateBookingAgainstSchedule(
+                    booking.getDepartment().getId(),
+                    booking.getPreferredDate().getDayOfWeek(),
+                    request.getAppointmentTime()
+            );
+        }
+
+        LocalTime previousTime = booking.getAppointmentTime();
+        booking.setAppointmentTime(request.getAppointmentTime());
+
+        Booking saved = bookingRepository.save(booking);
+
+        // Notify patient of the change — include previousTime and request.getReason() in the template
+        notificationService.notifyAppointmentTimeChanged(saved, previousTime, request.getReason());
+
+        return BookingResponse.from(saved);
+    }
+
+    @Transactional
+    public BookingResponse confirmWithTime(Long bookingId, ConfirmBookingRequest request) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new BadRequestException(
+                    "Only PENDING bookings can be confirmed. Current status: " + booking.getStatus()
+            );
+        }
+
+        // Schedule check only applies when there's a department (consultation bookings).
+        // Package bookings have no schedule constraint — admin can pick any time.
+        if (booking.getDepartment() != null) {
+            departmentScheduleService.validateBookingAgainstSchedule(
+                    booking.getDepartment().getId(),
+                    booking.getPreferredDate().getDayOfWeek(),
+                    request.getAppointmentTime()
+            );
+        }
+
+        booking.setAppointmentTime(request.getAppointmentTime());
+        booking.setStatus(BookingStatus.CONFIRMED);
+
+        if (request.getAdminNotes() != null && !request.getAdminNotes().isBlank()) {
+            booking.setAdminNotes(request.getAdminNotes());
+        }
+
+        Booking saved = bookingRepository.save(booking);
+
+        // Send confirmation notification — see "Notification templates" below
+        notificationService.notifyBookingStatusUpdateToPatient(saved);
+
+        return BookingResponse.from(saved);
     }
 
     @Transactional

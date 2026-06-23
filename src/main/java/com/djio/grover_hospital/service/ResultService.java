@@ -34,6 +34,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -132,8 +133,13 @@ public class ResultService {
 
         // Optionally notify patient now (default true)
         boolean shouldNotify = request.getNotifyPatient() == null || request.getNotifyPatient();
+
+        LocalDate requestedDate = booking != null
+                ? booking.getPreferredDate()
+                : result.getCreatedAt().toLocalDate();
+
         if (shouldNotify) {
-            notificationService.notifyResultReady(patient, result.getTitle());
+            notificationService.notifyResultReady(patient, result.getTitle(), requestedDate);
             result.setIsNotified(true);
             resultRepository.save(result);
         }
@@ -146,7 +152,14 @@ public class ResultService {
         Result result = resultRepository.findById(resultId)
                 .orElseThrow(() -> new ResourceNotFoundException("Result", "id", resultId));
 
-        notificationService.notifyResultReady(result.getPatient(), result.getTitle());
+        LocalDate requestedDate = result.getBooking() != null
+                ? result.getBooking().getPreferredDate()
+                : result.getCreatedAt().toLocalDate();
+
+        notificationService.notifyResultReady(result.getPatient(), result.getTitle(), requestedDate);
+
+
+        notificationService.notifyResultReady(result.getPatient(), result.getTitle(), requestedDate);
         result.setIsNotified(true);
 
         Long adminId = SecurityUtils.getCurrentUserId();

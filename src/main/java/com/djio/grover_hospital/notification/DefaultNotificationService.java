@@ -25,6 +25,8 @@ import com.djio.grover_hospital.service.NotificationPreferenceService.Notificati
 import com.djio.grover_hospital.service.NotificationPreferenceService.NotificationChannel;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Supplier;
@@ -72,6 +74,12 @@ public class DefaultNotificationService implements NotificationService {
 
     @Value("${app.hospital.contact-phone:+234 ___ ___ ____}")
     private String contactPhone;
+
+    @Value("${app.hospital.contact-email}")
+    private String contactEmail;
+
+    @Value("${app.frontend.portal-url:http://localhost:5173/portal}")
+    private String portalUrl;
 
     @Value("${app.frontend.base-url:http://localhost:5173}")
     private String frontendBaseUrl;
@@ -306,7 +314,7 @@ public class DefaultNotificationService implements NotificationService {
 
     @Override
     @Async
-    public void notifyResultReady(Patient patient, String resultTitle) {
+    public void notifyResultReady(Patient patient, String resultTitle, LocalDate requestedDate) {
         Long patientId = patient.getId();
         NotificationEvent event = NotificationEvent.RESULT_READY;
 
@@ -318,7 +326,7 @@ public class DefaultNotificationService implements NotificationService {
                     () -> emailSender.send(EmailMessage.builder()
                             .to(patient.getEmail())
                             .subject("Your medical result is ready")
-                            .textBody(buildResultReadyEmailBody(patient, resultTitle))
+                            .textBody(buildResultReadyEmailBody(patient, resultTitle, requestedDate))
                             .build()));
         }
 
@@ -382,6 +390,89 @@ public class DefaultNotificationService implements NotificationService {
 
         // Intentionally NO in-portal notification — password reset doesn't need a UI badge,
         // and dropping the token into a notification record would weaken security.
+    }
+
+    @Override
+    @Async
+    public void notifyAppointmentTimeChanged(Booking booking, LocalTime previousTime, String reason) {
+        Patient patient = booking.getPatient();
+        Long patientId = patient.getId();
+        NotificationEvent event = NotificationEvent.BOOKING_STATUS_UPDATE;
+
+        String reasonLine = (reason != null && !reason.isBlank())
+                ? "\n\nReason: " + reason
+                : "";
+
+        String emailBody = """
+            Hi %s,
+
+            The time for your appointment on %s has been updated.
+
+            Previous time: %s
+            New time:      %s%s
+
+            If this doesn't work for you, please reschedule via your Patient
+            Portal or contact us at %s or call %s.
+
+            — %s
+            """.formatted(
+                patient.getFirstName(),
+                booking.getPreferredDate().format(DATE_FMT),
+                formatAppointmentTime(previousTime),
+                formatAppointmentTime(booking.getAppointmentTime()),
+                reasonLine,
+                contactEmail, contactPhone, hospitalName);
+
+        String smsText = "Hi " + patient.getFirstName() + ", your " + hospitalName +
+                " appointment time on " + booking.getPreferredDate().format(DATE_FMT) +
+                " has changed to " + formatAppointmentTime(booking.getAppointmentTime()) + ".";
+
+        if (statusUpdateEmail
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
+            sendAndLog("appointment-time-changed-email",
+                    patientId, "APPOINTMENT_TIME_CHANGED", "BOOKING", booking.getId(),
+                    DeliveryChannel.EMAIL, patient.getEmail(),
+                    () -> emailSender.send(EmailMessage.builder()
+                            .to(patient.getEmail())
+                            .subject("Appointment time updated — #" + booking.getId())
+                            .textBody(emailBody)
+                            .build()));
+        }
+
+        if (statusUpdateSms && hasPhone(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
+            sendAndLog("appointment-time-changed-sms",
+                    patientId, "APPOINTMENT_TIME_CHANGED", "BOOKING", booking.getId(),
+                    DeliveryChannel.SMS, patient.getPhone(),
+                    () -> smsSender.send(SmsMessage.builder()
+                            .toPhoneNumber(patient.getPhone())
+                            .text(smsText)
+                            .build()));
+        }
+
+        if (statusUpdateWhatsapp && hasWhatsappTarget(patient)
+                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.WHATSAPP)) {
+            sendAndLog("appointment-time-changed-whatsapp",
+                    patientId, "APPOINTMENT_TIME_CHANGED", "BOOKING", booking.getId(),
+                    DeliveryChannel.WHATSAPP, resolveWhatsappNumber(patient),
+                    () -> whatsappSender.send(WhatsappMessage.builder()
+                            .toPhoneNumber(resolveWhatsappNumber(patient))
+                            .templateName("appointment_time_changed")
+                            .templateParams(List.of(
+                                    patient.getFirstName(),
+                                    booking.getPreferredDate().format(DATE_FMT),
+                                    formatAppointmentTime(booking.getAppointmentTime())
+                            ))
+                            .text(smsText)
+                            .build()));
+        }
+
+        sendSafely("appointment-time-changed-portal", () -> portalNotificationService.createForPatient(
+                patient.getId(),
+                PortalNotificationType.BOOKING_CONFIRMED,
+                String.format("Your appointment time on %s has been updated to %s.",
+                        booking.getPreferredDate().format(DATE_FMT),
+                        formatAppointmentTime(booking.getAppointmentTime()))));
     }
 
     @Override
@@ -450,32 +541,32 @@ public class DefaultNotificationService implements NotificationService {
     private String buildBookingConfirmationEmailBody(Booking booking) {
         Patient p = booking.getPatient();
         return """
-                Hello %s,
+            Hi %s,
 
-                Thank you for booking with %s. We have received your request.
+            Your appointment request has been received.
 
-                Booking ID:      #%d
-                Type:            %s
-                %s
-                Preferred date:  %s
-                Status:          PENDING
+            We will confirm your booking within 24 hours. You will receive a
+            notification by email and SMS once it is confirmed.
 
-                A member of our team will reach out to you shortly to confirm
-                the time and any final details.
+            %s
+            Requested date: %s
 
-                If you have any questions, contact us at %s.
+            If you need to make changes before confirmation, contact us at
+            %s or call %s.
 
-                — %s
-                """.formatted(
-                p.getFirstName(), hospitalName, booking.getId(),
-                booking.getBookingType().name(), bookingTargetLine(booking),
-                booking.getPreferredDate().format(DATE_FMT), contactPhone, hospitalName);
+            — %s
+            """.formatted(
+                p.getFirstName(),
+                bookingTargetLine(booking),
+                booking.getPreferredDate().format(DATE_FMT),
+                contactEmail, contactPhone,
+                hospitalName);
     }
 
     private String buildBookingConfirmationSmsText(Booking booking) {
-        return "Hi " + booking.getPatient().getFirstName() + ", your booking #" + booking.getId() +
-                " for " + booking.getPreferredDate().format(DATE_FMT) +
-                " is received. We'll call to confirm shortly. — " + hospitalName;
+        return "Hi " + booking.getPatient().getFirstName() + ", your appointment request for " +
+                booking.getPreferredDate().format(DATE_FMT) +
+                " is received. We'll confirm within 24 hours. — " + hospitalName;
     }
 
     private String buildBookingAlertEmailBody(Booking booking) {
@@ -518,29 +609,56 @@ public class DefaultNotificationService implements NotificationService {
 
     private String buildStatusUpdateEmailBody(Booking booking) {
         Patient p = booking.getPatient();
-        String statusMessage = switch (booking.getStatus()) {
-            case CONFIRMED -> "Your booking has been confirmed. We look forward to seeing you.";
-            case CANCELLED -> "Your booking has been cancelled. If this was unexpected, please contact us.";
-            case COMPLETED -> "Your appointment has been marked as completed. Thank you for visiting us.";
-            default -> "There has been an update to your booking.";
-        };
-        return """
-                Hello %s,
+        return switch (booking.getStatus()) {
+            case CONFIRMED -> """
+                Hi %s,
+
+                Your booking has been confirmed.
 
                 %s
+                Date: %s
+                Time: %s
 
-                Booking ID:      #%d
-                %s
-                Preferred date:  %s
-                Status:          %s
+                If you need to reschedule or cancel, please do so via your Patient
+                Portal or contact us at %s or call %s.
 
-                For any questions, contact us at %s.
+                We look forward to seeing you.
 
                 — %s
                 """.formatted(
-                p.getFirstName(), statusMessage, booking.getId(),
-                bookingTargetLine(booking), booking.getPreferredDate().format(DATE_FMT),
-                booking.getStatus().name(), contactPhone, hospitalName);
+                    p.getFirstName(),
+                    bookingTargetLine(booking),
+                    booking.getPreferredDate().format(DATE_FMT),
+                    formatAppointmentTime(booking.getAppointmentTime()),
+                    contactEmail, contactPhone, hospitalName);
+
+            case CANCELLED -> """
+                Hi %s,
+
+                Your booking has been cancelled. If this was unexpected, please
+                contact us at %s or call %s.
+
+                — %s
+                """.formatted(p.getFirstName(), contactEmail, contactPhone, hospitalName);
+
+            case COMPLETED -> """
+                Hi %s,
+
+                Your appointment has been marked as completed. Thank you for
+                visiting us.
+
+                — %s
+                """.formatted(p.getFirstName(), hospitalName);
+
+            default -> """
+                Hi %s,
+
+                There has been an update to your booking #%d. Please log in to
+                your Patient Portal for details.
+
+                — %s
+                """.formatted(p.getFirstName(), booking.getId(), hospitalName);
+        };
     }
 
     private String buildReminderEmailBody(Booking booking) {
@@ -571,14 +689,20 @@ public class DefaultNotificationService implements NotificationService {
     }
 
     private String buildStatusUpdateShortText(Booking booking) {
+        if (booking.getStatus() == BookingStatus.CONFIRMED && booking.getAppointmentTime() != null) {
+            return "Hi " + booking.getPatient().getFirstName() + ", your booking is confirmed for " +
+                    booking.getPreferredDate().format(DATE_FMT) + " at " +
+                    formatAppointmentTime(booking.getAppointmentTime()) + ". — " + hospitalName;
+        }
         return "Hi " + booking.getPatient().getFirstName() + ", your booking #" + booking.getId() +
                 " is now " + booking.getStatus().name() + ". — " + hospitalName;
     }
 
     private String buildStatusUpdatePortalMessage(Booking booking) {
         return switch (booking.getStatus()) {
-            case CONFIRMED -> String.format("Your booking #%d has been confirmed for %s.",
-                    booking.getId(), booking.getPreferredDate().format(DATE_FMT));
+            case CONFIRMED -> String.format("Your booking has been confirmed for %s at %s.",
+                    booking.getPreferredDate().format(DATE_FMT),
+                    formatAppointmentTime(booking.getAppointmentTime()));
             case CANCELLED -> String.format("Your booking #%d has been cancelled.", booking.getId());
             case COMPLETED -> String.format("Your booking #%d has been marked as completed.", booking.getId());
             default -> String.format("Your booking #%d has been updated.", booking.getId());
@@ -593,7 +717,7 @@ public class DefaultNotificationService implements NotificationService {
         };
     }
 
-    private String buildResultReadyEmailBody(Patient patient, String resultTitle) {
+    private String buildResultReadyEmailBody(Patient patient, String resultTitle, LocalDate requestedDate) {
         return """
                 Hello %s,
 
@@ -605,7 +729,7 @@ public class DefaultNotificationService implements NotificationService {
                 contact us at %s.
 
                 — %s
-                """.formatted(patient.getFirstName(), resultTitle, contactPhone, hospitalName);
+                """.formatted(patient.getFirstName(), resultTitle, requestedDate.format(DATE_FMT), contactEmail, contactPhone, hospitalName);
     }
 
     private String bookingTargetLine(Booking booking) {
@@ -624,6 +748,11 @@ public class DefaultNotificationService implements NotificationService {
 
     private boolean hasPhone(Patient patient) {
         return patient.getPhone() != null && !patient.getPhone().isBlank();
+    }
+
+    private String formatAppointmentTime(java.time.LocalTime t) {
+        if (t == null) return "to be confirmed";
+        return t.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"));
     }
 
     /**

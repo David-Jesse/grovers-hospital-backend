@@ -3,12 +3,14 @@ package com.djio.grover_hospital.model.entity;
 
 import com.djio.grover_hospital.model.enums.BookingStatus;
 import com.djio.grover_hospital.model.enums.BookingType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -60,6 +62,10 @@ public class Booking {
 
     @Column(name = "preferred_date", nullable = false)
     private LocalDate preferredDate;
+
+    @Column(name = "appointment_time")
+    @JsonFormat(pattern = "HH:mm")
+    private LocalTime appointmentTime;
 
     @Column(name = "reschedule_count", nullable = false)
     @Builder.Default

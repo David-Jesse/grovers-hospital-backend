@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 
 /**
@@ -39,6 +40,7 @@ public class BookingResponse {
     private String notes;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    private LocalTime appointmentTime;
 
     private Integer rescheduleCount;
     private OffsetDateTime lastRescheduledAt;
@@ -52,6 +54,7 @@ public class BookingResponse {
                 .notes(booking.getNotes())
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
+                .appointmentTime(booking.getAppointmentTime())
                 .lastRescheduledAt(booking.getLastRescheduledAt())
                 .rescheduleCount(booking.getRescheduleCount());
 
