@@ -75,7 +75,7 @@ public class DefaultNotificationService implements NotificationService {
     @Value("${app.hospital.contact-phone:+234 ___ ___ ____}")
     private String contactPhone;
 
-    @Value("${app.hospital.contact-email}")
+    @Value("${app.hospital.contact-email:frontdesk@grovershospital.com.ng}")
     private String contactEmail;
 
     @Value("${app.frontend.portal-url:http://localhost:5173/portal}")
