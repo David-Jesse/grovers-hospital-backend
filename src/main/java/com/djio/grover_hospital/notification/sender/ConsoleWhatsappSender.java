@@ -32,6 +32,9 @@ public class ConsoleWhatsappSender implements WhatsappSender {
         out.append(SEPARATOR).append("\n");
 
         log.info(out.toString());
-        return null;
+
+        // Return a synthetic success so sendAndLog has something to write to the delivery log.
+        // Use a "console-" prefix so it's obvious in logs the message didn't actually leave the system.
+        return SendResult.success("console-" + System.currentTimeMillis());
     }
 }
