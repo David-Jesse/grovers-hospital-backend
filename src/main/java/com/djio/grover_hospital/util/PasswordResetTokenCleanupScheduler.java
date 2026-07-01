@@ -1,4 +1,4 @@
-package com.djio.grover_hospital.scheduler;
+package com.djio.grover_hospital.util;
 
 import com.djio.grover_hospital.repository.PasswordResetTokenRepository;
 import lombok.RequiredArgsConstructor;
