@@ -1,8 +1,6 @@
 # Grover Hospital — Backend
 
-A REST API backend for a multi-tenant hospital operations platform, covering a public-facing website, a patient self-service portal, and an internal admin panel. Built with **Spring Boot 4**, **Java 17**, **PostgreSQL**, and **JWT-based** authentication.
-
-> **Status:** Active development. Not yet deployed. Domain modelling, persistence, security, and the bulk of REST endpoints are in place; notification delivery currently runs through console-only sender implementations pending production wiring.
+A production REST API backend for a multi-tenant hospital operations platform, covering a public-facing website, a patient self-service portal, and an internal admin panel. Built with **Spring Boot 4**, **Java 17**, **PostgreSQL 17**, and **JWT-based** authentication. Deployed on **Google Cloud Run** with **Cloud SQL** and **Cloud Storage**.
 
 ---
 
@@ -16,14 +14,14 @@ A REST API backend for a multi-tenant hospital operations platform, covering a p
 6. [Authentication & Authorization](#authentication--authorization)
 7. [File Storage & Encryption](#file-storage--encryption)
 8. [Notifications](#notifications)
-9. [Project Structure](#project-structure)
-10. [Getting Started](#getting-started)
-11. [Configuration](#configuration)
-12. [Database Migrations](#database-migrations)
-13. [Running Tests](#running-tests)
-14. [API Documentation](#api-documentation)
-15. [Roadmap](#roadmap)
-16. [License](#license)
+9. [Department Scheduling](#department-scheduling)
+10. [Booking Lifecycle](#booking-lifecycle)
+11. [Project Structure](#project-structure)
+12. [Getting Started](#getting-started)
+13. [Configuration](#configuration)
+14. [Database Migrations](#database-migrations)
+15. [Deployment](#deployment)
+16. [API Documentation](#api-documentation)
 
 ---
 
@@ -31,9 +29,9 @@ A REST API backend for a multi-tenant hospital operations platform, covering a p
 
 Grover Hospital's backend is organized around three audiences, each served by a dedicated set of controllers:
 
-- **Public** — anonymous endpoints powering the marketing site: departments, team members, health packages, promotions, blog posts, testimonials, and public feedback submission.
-- **Patient portal** — authenticated endpoints (`/portal/...`) where registered patients manage their profile, place and cancel bookings, view test results, download encrypted result files, and submit feedback.
-- **Admin panel** — privileged endpoints (`/admin/...`) where staff manage every resource: bookings, departments, consultant schedules, packages, results, team members, blog posts, testimonials, promotions, and feedback — plus image uploads.
+- **Public** — anonymous endpoints powering the marketing site: departments, department schedules, team members, health packages, promotions, blog posts, testimonials, and public feedback submission.
+- **Patient portal** — authenticated endpoints (`/portal/...`) where registered patients manage their profile, place and reschedule bookings, view test results, download encrypted result files, manage notification preferences, and submit feedback.
+- **Admin panel** — privileged endpoints (`/admin/...`) where staff manage every resource: bookings (confirm with assigned time, update appointment time, reschedule), departments and their weekly schedules, consultant schedules, packages, results, team members, blog posts, testimonials, promotions, and feedback.
 
 The system treats `Patient` and `Admin` as distinct principal types, authenticated through separate login endpoints and authorized through a shared `Role` enum.
 
@@ -53,6 +51,7 @@ The codebase follows a conventional layered Spring Boot architecture:
 │  Services                                                │
 │  ─ Domain logic, transactions, cross-entity orchestration│
 │  ─ Notification, encryption, audit, file storage         │
+│  ─ Department schedule validation, booking enforcement   │
 └──────────────────────────────────────────────────────────┘
                           │
 ┌──────────────────────────────────────────────────────────┐
@@ -61,173 +60,241 @@ The codebase follows a conventional layered Spring Boot architecture:
 └──────────────────────────────────────────────────────────┘
                           │
 ┌──────────────────────────────────────────────────────────┐
-│  PostgreSQL  +  Encrypted file storage (filesystem)      │
+│  PostgreSQL 17 (Cloud SQL) + Cloud Storage (file uploads)│
 └──────────────────────────────────────────────────────────┘
 ```
 
 Cross-cutting concerns sit in dedicated packages:
 
 - `security/` — JWT filter, token provider, custom `UserDetailsService`, `SecurityUtils` for principal lookup.
-- `config/` — `SecurityConfig`, `CorsConfig`, `JwtConfig`, `WebMvcConfig`, `FileStorageConfig`, `AuditConfig`, and a `DataSeeder` for development bootstrap.
+- `config/` — `SecurityConfig`, `JwtConfig`, `WebMvcConfig`, `OpenApiConfig`, `DataSeeder` for development bootstrap.
 - `exception/` — typed exceptions (`ResourceNotFoundException`, `BadRequestException`, `UnauthorizedException`, `FileStorageException`) and a `@RestControllerAdvice` `GlobalExceptionHandler` for consistent error responses.
-- `service/notification/` — channel-agnostic notification dispatch with pluggable senders.
+- `notification/` — channel-agnostic notification dispatch with pluggable senders per channel.
 
 ---
 
 ## Tech Stack
 
-| Layer            | Technology                                                          |
-|------------------|---------------------------------------------------------------------|
-| Language         | Java 17                                                             |
-| Framework        | Spring Boot 4.0.6                                                   |
-| Web              | Spring Web MVC                                                      |
-| Security         | Spring Security + JJWT (jjwt-api / impl / jackson 0.12.x)           |
-| Persistence      | Spring Data JPA, Hibernate, PostgreSQL                              |
-| Migrations       | Flyway (`db/migration/V1__create_users_and_auth.sql`)               |
-| API Docs         | springdoc-openapi (Swagger UI)                                      |
-| Build            | Maven (wrapper included)                                            |
-| Boilerplate      | Lombok                                                              |
-| File storage     | Local filesystem, AES-encrypted at rest                             |
+| Layer | Technology |
+|---|---|
+| Language | Java 17 |
+| Framework | Spring Boot 4.0.6 |
+| Web | Spring Web MVC |
+| Security | Spring Security + JJWT 0.12.x (HS512) |
+| Persistence | Spring Data JPA, Hibernate (validate mode), PostgreSQL 17 |
+| Schema management | Hand-run SQL migrations (Hibernate validate — schema must exist before startup) |
+| API Docs | springdoc-openapi (Swagger UI, JWT bearer scheme) |
+| Build | Maven |
+| Boilerplate | Lombok |
+| File storage | Google Cloud Storage (`gs://grovers-hospital-uploads`), volume-mounted at `/app/uploads` |
+| Encryption | AES-256-GCM for result files at rest |
+| Rate limiting | Bucket4j 8.19.0 |
+| HTTP client | Spring `RestClient` |
+| Notifications | SMTP (email), YourNotify REST API (SMS), Meta WhatsApp Cloud API (WhatsApp — outbound only, provider-switchable) |
+| Deployment | Google Cloud Run (`grover-hospital`, `europe-west2`) |
+| Database | Cloud SQL PostgreSQL (`grovers-db`, `europe-west2`) |
+| Secrets | Google Secret Manager (4 secrets: `db-password`, `jwt-secret`, `encryption-master-key`, `smtp-password`) |
 
 ---
 
 ## Domain Model
 
-The system models 15 persistent entities. Tables are explicit via `@Table` annotations and several use composite indexes for query-heavy paths (`access_logs`, `bookings`, `feedback`, `results`).
-
-| Entity              | Table              | Purpose                                                                  |
-|---------------------|--------------------|--------------------------------------------------------------------------|
-| `Patient`           | `patients`         | End users of the patient portal. Authenticates with email + password.    |
-| `Admin`             | `admins`           | Internal staff users with role-scoped privileges.                        |
-| `Department`        | `departments`      | Clinical departments (cardiology, paediatrics, etc.). Slug-addressable.  |
-| `TeamMember`        | `team_members`     | Doctors, nurses, and consultants displayed on the public site.           |
-| `ConsultantSchedule`| `consultant_schedules` | Per-consultant availability, scoped by department.                   |
-| `HealthPackage`     | `health_packages`  | Bundled service offerings (e.g. "Annual Checkup"). Slug-addressable.     |
-| `PackageTier`       | `package_tiers`    | Pricing/feature tiers within a `HealthPackage`.                          |
-| `Booking`           | `bookings`         | Patient appointment or package booking. Drives the booking lifecycle.    |
-| `Result`            | `results`          | Test/diagnostic results owned by a patient; status-tracked.              |
-| `ResultFile`        | `results_files`    | Encrypted attachments (PDFs, scans, lab reports) linked to a `Result`.   |
-| `BlogPost`          | `blog_posts`       | CMS-style articles. Drafted by admins, slug-addressable when published.  |
-| `Testimonial`       | `testimonials`     | Patient testimonials, admin-approved before going public.                |
-| `Promotion`         | `promotions`       | Time-bound marketing campaigns; admin-toggleable.                        |
-| `Feedback`          | `feedback`         | Submissions from public visitors or authenticated patients.              |
-| `AccessLog`         | `access_logs`      | Audit trail of sensitive operations (e.g. result-file access).           |
+| Entity | Table | Purpose |
+|---|---|---|
+| `Patient` | `patients` | End users of the patient portal. Authenticates with email + password (BCrypt 12). |
+| `Admin` | `admins` | Internal staff. Single seeded admin; role-gated with `can('section')` helper for future RBAC. |
+| `Department` | `departments` | 19 clinical departments. Slug-addressable. |
+| `DepartmentSchedule` | `department_schedule` | Per-department weekly availability — one row per time range per day. Multiple ranges per day supported (e.g. split shifts). Used to validate and constrain patient bookings. |
+| `TeamMember` | `team_members` | Doctors and consultants displayed on the public site. |
+| `ConsultantSchedule` | `consultant_schedules` | Doctor-level availability (separate from department schedules). |
+| `HealthPackage` | `health_packages` | Bundled service offerings. Slug-addressable. |
+| `PackageTier` | `package_tiers` | Pricing/feature tiers within a `HealthPackage`. |
+| `Booking` | `bookings` | Patient appointment or package booking. Drives the full booking lifecycle including admin-assigned `appointmentTime`. |
+| `Result` | `results` | Diagnostic results owned by a patient; status-tracked. |
+| `ResultFile` | `result_files` | AES-256-GCM encrypted attachments (PDFs, scans) linked to a `Result`. |
+| `MedicalDocument` | `medical_documents` | AES-256-GCM encrypted patient-uploaded medical documents. |
+| `BlogPost` | `blog_posts` | CMS articles drafted by admins, published via toggle. |
+| `Testimonial` | `testimonials` | Patient testimonials, admin-approved before going public. |
+| `Promotion` | `promotions` | Time-bound marketing campaigns; admin-toggleable. |
+| `Feedback` | `feedback` | Submissions from public visitors or authenticated patients. |
+| `Notification` | `notifications` | In-portal bell notifications for patients and admins. |
+| `NotificationPreference` | `notification_preferences` | Per-patient opt-out settings per event + channel. |
+| `NotificationDeliveryLog` | `notification_delivery_logs` | Delivery audit trail per channel send (success/failure + provider message ID). |
+| `AccessLog` | `access_logs` | Audit trail of sensitive admin operations. |
 
 ### Enums
 
-- `Role` — patient vs. admin authorities.
-- `BookingStatus` — booking lifecycle states.
-- `BookingType` — appointment vs. package booking.
-- `ResultStatus` — result lifecycle (pending / ready / notified).
-- `FeedbackSource` — distinguishes public-form feedback from portal-authenticated feedback.
+`Role`, `BookingStatus`, `BookingType`, `ResultStatus`, `FeedbackSource`, `DeliveryChannel`, `PortalNotificationType`
 
 ---
 
 ## API Surface
 
-All endpoints are JSON. Authenticated endpoints require an `Authorization: Bearer <jwt>` header.
+All endpoints are JSON and sit under the `/api/v1` context path. Authenticated endpoints require `Authorization: Bearer <jwt>`.
 
 ### Authentication — `/auth`
 
-| Method | Path              | Description                              |
-|--------|-------------------|------------------------------------------|
-| POST   | `/auth/register`  | Register a new patient.                  |
-| POST   | `/auth/login`     | Patient login → access + refresh tokens. |
-| POST   | `/auth/admin/login` | Admin login → access + refresh tokens. |
-| POST   | `/auth/refresh`   | Exchange a refresh token for a new access token. |
+| Method | Path | Description |
+|---|---|---|
+| POST | `/auth/register` | Register a new patient. |
+| POST | `/auth/login` | Patient login → access + refresh tokens. |
+| POST | `/auth/admin/login` | Admin login → access + refresh tokens. |
+| POST | `/auth/refresh` | Rotate access token using refresh token. |
+| POST | `/auth/forgot-password` | Request a password reset link (rate-limited). |
+| POST | `/auth/reset-password` | Complete password reset with token. |
 
 ### Public — anonymous
 
-| Resource         | Endpoints                                                                 |
-|------------------|---------------------------------------------------------------------------|
-| Departments      | `GET /departments`, `GET /departments/{slug}`                             |
-| Team             | `GET /team`                                                               |
-| Schedules        | `GET /consultant-schedule`, `GET /consultant-schedule/department/{id}`    |
-| Packages         | `GET /packages`, `GET /packages/{slug}`                                   |
-| Promotions       | `GET /promotions`                                                         |
-| Blog             | `GET /blog`, `GET /blog/{slug}`                                           |
-| Testimonials     | `GET /testimonials`                                                       |
-| Feedback         | `POST /feedback`                                                          |
+| Resource | Endpoints |
+|---|---|
+| Departments | `GET /departments`, `GET /departments/{id}` |
+| Department schedules | `GET /public/departments/{id}/schedule` |
+| Team | `GET /team` |
+| Consultant schedules | `GET /consultant-schedule`, `GET /consultant-schedule/department/{id}` |
+| Packages | `GET /packages`, `GET /packages/{slug}` |
+| Promotions | `GET /promotions` |
+| Blog | `GET /public/blog`, `GET /public/blog/{id}` |
+| Testimonials | `GET /testimonials` |
+| Feedback | `POST /feedback` |
+| Health check | `GET /health` |
 
-### Patient Portal — `/portal/...` (patient JWT required)
+### Patient Portal — `/portal/...`
 
-| Resource | Endpoints                                                                            |
-|----------|--------------------------------------------------------------------------------------|
-| Profile  | `GET /portal/profile`, `PUT /portal/profile`, `PUT /portal/profile/password`         |
-| Bookings | `POST /portal/bookings`, `GET /portal/bookings`, `GET /portal/bookings/{id}`, `PUT /portal/bookings/{id}/cancel` |
-| Results  | `GET /portal/results`, `GET /portal/results/{id}`, `GET /portal/results/{resultId}/files/{fileId}/download` |
-| Feedback | `POST /portal/feedback`                                                              |
+| Resource | Endpoints |
+|---|---|
+| Profile | `GET /portal/profile`, `PUT /portal/profile`, `PUT /portal/profile/password` |
+| Profile update requests | `POST /portal/profile/update-request`, `GET /portal/profile/update-request/pending` |
+| Bookings | `POST /portal/bookings`, `GET /portal/bookings`, `GET /portal/bookings/{id}`, `PUT /portal/bookings/{id}/cancel`, `PUT /portal/bookings/{id}/reschedule` |
+| Results | `GET /portal/results`, `GET /portal/results/{id}`, `GET /portal/results/{resultId}/files/{fileId}/download`, `POST /portal/results/{resultId}/files/{fileId}/request-download-link` |
+| Medical documents | `GET /portal/documents`, `POST /portal/documents`, `GET /portal/documents/{id}/download`, `DELETE /portal/documents/{id}` |
+| Health profile | `GET /portal/health-profile`, `PUT /portal/health-profile` |
+| Medications | `GET /portal/medications`, `POST /portal/medications`, `PUT /portal/medications/{id}`, `DELETE /portal/medications/{id}` |
+| Chronic conditions | `GET /portal/conditions`, `POST /portal/conditions`, `DELETE /portal/conditions/{id}` |
+| Visits | `GET /portal/visits` |
+| Feedback | `POST /portal/feedback` |
+| Notifications | `GET /portal/notifications`, `PATCH /portal/notifications/{id}/read`, `PATCH /portal/notifications/read-all` |
+| Notification preferences | `GET /portal/notification-preferences`, `PUT /portal/notification-preferences` |
+| Account | `GET /portal/account/export-data/{token}`, `DELETE /portal/account` |
 
-### Admin Panel — `/admin/...` (admin JWT required)
+### Admin Panel — `/admin/...`
 
-| Resource             | Endpoints                                                                 |
-|----------------------|---------------------------------------------------------------------------|
-| Bookings             | `GET /admin/bookings`, `GET /admin/bookings/{id}`, `PUT /admin/bookings/{id}/status`, `PUT /admin/bookings/{id}/notes` |
-| Departments          | Full CRUD under `/admin/departments`                                      |
-| Team                 | Full CRUD under `/admin/team`                                             |
-| Consultant Schedules | Full CRUD under `/admin/consultant-schedule`                              |
-| Packages             | Full CRUD under `/admin/packages`, plus tier management at `/admin/packages/{packageId}/tiers` and `/admin/packages/tiers/{tierId}` |
-| Promotions           | Full CRUD plus `PATCH /admin/promotions/{id}/toggle`                      |
-| Blog                 | Full CRUD plus `PUT /admin/blog/{id}/publish`                             |
-| Testimonials         | Full CRUD plus `PATCH /admin/testimonials/{id}/approve`                   |
-| Results              | `POST /admin/results` (multipart), `GET` list & detail, `POST /admin/results/{id}/notify`, file download, delete |
-| Feedback             | `GET /admin/feedback`, `GET /admin/feedback/stats`, `GET /admin/feedback/{id}`, `PATCH /admin/feedback/{id}/read`, `DELETE /admin/feedback/{id}` |
-| Image upload         | `POST /admin/upload/image` (multipart)                                    |
-
-A complete, interactive specification is available via Swagger UI once the application is running — see [API Documentation](#api-documentation).
+| Resource | Endpoints |
+|---|---|
+| Bookings | `GET /admin/bookings`, `GET /admin/bookings/{id}`, `PUT /admin/bookings/{id}/confirm` (assigns time), `PUT /admin/bookings/{id}/appointment-time` (update confirmed time), `PUT /admin/bookings/{id}/status`, `PUT /admin/bookings/{id}/notes` |
+| Departments | Full CRUD under `/admin/departments` |
+| Department schedules | `GET /admin/departments/{id}/schedule`, `PUT /admin/departments/{id}/schedule` (bulk replace) |
+| Team | Full CRUD under `/admin/team` |
+| Consultant schedules | Full CRUD under `/admin/consultant-schedule` |
+| Packages | Full CRUD under `/admin/packages`, tier management at `/admin/packages/{id}/tiers` |
+| Promotions | Full CRUD + `PATCH /admin/promotions/{id}/toggle` |
+| Blog | Full CRUD + `PUT /admin/blog/{id}/publish` |
+| Testimonials | Full CRUD + `PATCH /admin/testimonials/{id}/approve` |
+| Results | `POST /admin/results` (multipart), list, detail, `POST /admin/results/{id}/notify`, file download, delete |
+| Feedback | List, detail, stats, mark-read, respond, delete |
+| Profile update requests | `GET /admin/profile-update-requests`, `PUT /admin/profile-update-requests/{id}/approve`, `PUT /admin/profile-update-requests/{id}/reject` |
+| Image upload | `POST /admin/upload/image` (multipart) |
 
 ---
 
 ## Authentication & Authorization
 
-Authentication is JWT-based, stateless, and bifurcated by principal type:
-
-- **Patients** register through `/auth/register` and authenticate at `/auth/login`.
-- **Admins** are seeded (see `DataSeeder`) and authenticate at `/auth/admin/login`.
-- Both flows return an **access token** plus a **refresh token**; `/auth/refresh` rotates the access token without re-authenticating.
-
-Under the hood:
-
-- `JwtAuthenticationFilter` runs once per request, extracting the bearer token, validating it through `JwtTokenProvider`, and resolving the principal via `CustomUserDetailsService.loadUserByIdAndRole(userId, role)`. The token carries the user's `Role`, so the filter can route lookups to the correct repository (`PatientRepository` or `AdminRepository`).
-- `UserPrincipal` is the unified `UserDetails` implementation exposed to Spring Security.
-- `SecurityUtils` provides convenience accessors for the current authenticated principal inside service code.
-- `SecurityConfig` (`@EnableWebSecurity`) registers the JWT filter, configures stateless session management, and locks down `/admin/**` and `/portal/**` while leaving public endpoints open.
-
-Patient-owned resources (bookings, results, files) are additionally checked at the service layer: a patient can only read or mutate records that belong to them.
+- **Patients** register at `/auth/register`, authenticate at `/auth/login`.
+- **Admins** are seeded via `DataSeeder` and authenticate at `/auth/admin/login`.
+- Both flows return a short-lived **access token** (HS512) and a **refresh token**; `/auth/refresh` rotates without re-authentication.
+- `JwtAuthenticationFilter` runs once per request, validates the bearer token, and resolves the principal via `CustomUserDetailsService.loadUserByIdAndRole(userId, role)` — routing to `PatientRepository` or `AdminRepository` based on the `Role` claim in the token.
+- `SecurityConfig` locks `/admin/**` to `ROLE_ADMIN` and `/portal/**` to `ROLE_PATIENT`, with `/public/**`, `/auth/**`, and a handful of specific GET paths open to anonymous access.
+- Patient-owned resources are additionally ownership-checked at the service layer.
+- Forgot-password requests are rate-limited via Bucket4j.
 
 ---
 
 ## File Storage & Encryption
 
-Result files (`ResultFile`) are uploaded by admins and downloaded by both admins and the owning patient. To keep PHI off the filesystem in plaintext:
+Result files and medical documents are treated as PHI and encrypted at rest:
 
-- **`EncryptionService`** encrypts the file bytes on upload and decrypts them on download.
-- **`FileStorageService`** writes ciphertext to a configured upload directory (see `FileStorageConfig` + `app.upload.dir` in `application.properties`).
-- Downloads stream through **`DecryptedFileStream`**, which decrypts on the fly and pipes bytes to the response — files are never written to disk in plaintext.
-- Every download is recorded via **`AuditService`** → `AccessLog`, giving an auditable trail of who accessed which result file and when.
+- **`EncryptionService`** encrypts on upload and decrypts on download using AES-256-GCM, with a master key from Secret Manager.
+- **`FileStorageService`** writes ciphertext to the Cloud Storage bucket, mounted at `/app/uploads` on Cloud Run.
+- Downloads stream through a decrypting wrapper — files are never written to disk in plaintext.
+- Every download is recorded via **`AuditService`** → `AccessLog`.
+- **Signed download links** (for patient-requested result links) use a short-lived JWT that encodes the file reference; the `/portal/account/export-data/{token}` endpoint is public but token-gated.
 
-Image uploads (team member photos, blog post images) go through `AdminUploadController` and use the same storage layer but are not encrypted, since they're public assets.
+Public image uploads (team photos, blog images) use the same storage layer without encryption.
 
 ---
 
 ## Notifications
 
-A small notification subsystem dispatches transactional messages (booking confirmations, "your result is ready", etc.) across email, SMS, and WhatsApp channels.
+A multi-channel notification subsystem dispatches transactional messages across email, SMS, WhatsApp, and in-portal bell notifications.
 
 ```
-NotificationService
+NotificationService (interface)
        │
        ▼
-DefaultNotificationService ── routes message → matching sender
+DefaultNotificationService
        │
-       ├─ EmailSender   ← ConsoleEmailSender    (dev)
-       ├─ SmsSender     ← ConsoleSmsSender      (dev)
-       └─ WhatsappSender ← ConsoleWhatsappSender (dev)
+       ├─ EmailSender      ← SmtpEmailSender       (production)
+       ├─ SmsSender        ← YourNotifySmsSender    (production, YourNotify REST API)
+       └─ WhatsappSender   ← MetaWhatsappSender     (production, Meta Cloud API)
+                             ConsoleWhatsappSender  (default/dev, provider=console)
 ```
 
-Each channel is defined by an interface (`EmailSender`, `SmsSender`, `WhatsappSender`) with a message DTO (`EmailMessage`, `SmsMessage`, `WhatsappMessage`). Console implementations are wired in for development — they log the outbound message instead of calling a provider. Production senders (SMTP / Twilio / WhatsApp Cloud API or equivalent) can be dropped in as additional `@Component` implementations of the same interface and selected through configuration, with no caller-side changes.
+- Each channel is interface-defined and property-switched: `app.notification.whatsapp.provider=console|meta`.
+- Every patient-bound send respects a two-layer opt-out: app-level toggle in `application.properties` + per-patient `NotificationPreference` row.
+- All sends are wrapped in `sendSafely` / `sendAndLog` — a single channel failure never blocks other channels or the calling transaction.
+- Every send is recorded in `notification_delivery_logs` with provider message ID, status, and channel.
+- **WhatsApp outbound** uses Meta's Cloud API (Graph API `/{phone-number-id}/messages`). Template messages are used for business-initiated notifications; free-form text is available within the 24-hour customer service window. Credentials (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`) are stored in Secret Manager and injected via Cloud Run env vars.
 
-An `SmtpEmailService` exists under `service/impl/` and is the intended production replacement for `ConsoleEmailSender`.
+### Notification events
+
+| Event | Channels |
+|---|---|
+| Booking received (patient acknowledgment) | Email, SMS, WhatsApp, Portal bell |
+| New booking alert (hospital staff) | Email, SMS, Portal bell (all admins) |
+| Booking confirmed with assigned time | Email, SMS, WhatsApp, Portal bell |
+| Appointment time changed | Email, SMS, WhatsApp, Portal bell |
+| Appointment reminder (24h before) | Email, SMS, WhatsApp, Portal bell |
+| Result ready | Email, SMS, Portal bell |
+| Result download link | Email only |
+| Feedback received (patient acknowledgment) | Email, Portal bell |
+| Feedback response sent | Email, Portal bell |
+| Password reset link | Email only |
+
+---
+
+## Department Scheduling
+
+Each department has a weekly schedule of available time windows stored in `department_schedule`. Multiple ranges per day are supported (e.g. a split shift).
+
+**Booking validation is split by responsibility:**
+
+- At **booking create** — only the day is validated (department must be open at all on that day-of-week). No time required at this stage.
+- At **admin confirm** — the assigned `appointmentTime` is validated against the department's windows for that specific day (start inclusive, end exclusive).
+
+The admin bulk-replace endpoint (`PUT /admin/departments/{id}/schedule`) validates no overlapping ranges per day before replacing. The public endpoint (`GET /public/departments/{id}/schedule`) exposes availability for the frontend booking picker to grey out unavailable days and constrain the time picker shown to admins on confirmation.
+
+---
+
+## Booking Lifecycle
+
+```
+Patient submits booking (preferredDate only)
+       │
+       ▼  status=PENDING, appointmentTime=null
+Admin reviews in dashboard
+       │
+       ▼  PUT /admin/bookings/{id}/confirm { appointmentTime, adminNotes }
+         ─ validates time against department schedule
+         ─ status=CONFIRMED, appointmentTime set
+         ─ fires booking-confirmed notification with time
+       │
+       ├─ Admin updates time later → PUT /admin/bookings/{id}/appointment-time
+       │   ─ fires appointment-time-changed notification
+       │
+       └─ Patient reschedules → appointmentTime cleared, status=PENDING
+           ─ admin re-confirms with new time
+```
+
+Package bookings (`BookingType.PACKAGE`) bypass department schedule validation — no department is attached.
 
 ---
 
@@ -236,28 +303,30 @@ An `SmtpEmailService` exists under `service/impl/` and is the intended productio
 ```
 src/main/java/com/djio/grover_hospital/
 ├── GroverHospitalApplication.java
-├── config/                    # SecurityConfig, JwtConfig, CorsConfig, WebMvcConfig,
-│                              # FileStorageConfig, AuditConfig, DataSeeder
-├── controller/                # 28 controllers across public / portal / admin
+├── config/                    # SecurityConfig, OpenApiConfig, WebMvcConfig, DataSeeder
+├── controller/                # ~30 controllers across public / portal / admin
 ├── exception/                 # Typed exceptions + GlobalExceptionHandler
 ├── model/
 │   ├── dto/
-│   │   ├── request/           # Inbound DTOs (validated)
-│   │   └── response/          # Outbound DTOs + ApiResponse / PageResponse wrappers
-│   ├── entity/                # 15 JPA entities
-│   └── enums/                 # Role, BookingStatus, BookingType, ResultStatus, FeedbackSource
+│   │   ├── request/           # Inbound DTOs (Bean Validation)
+│   │   └── response/          # Outbound DTOs, ApiResponse<T>, PageResponse<T>
+│   ├── entity/                # JPA entities
+│   └── enums/
+├── notification/
+│   ├── channel/               # EmailMessage, SmsMessage, WhatsappMessage
+│   ├── core/                  # SendResult
+│   ├── sender/                # EmailSender, SmsSender, WhatsappSender interfaces + impls
+│   └── whatsapp/              # WhatsAppConfig, WhatsAppCloudClient, PhoneNumberFormatter
 ├── repository/                # Spring Data JPA repositories
 ├── security/                  # JwtAuthenticationFilter, JwtTokenProvider,
 │                              # CustomUserDetailsService, UserPrincipal, SecurityUtils
-├── service/                   # Domain services
-│   ├── impl/                  # FileStorageService, SmtpEmailService
-│   └── notification/          # Notification subsystem (channels + senders)
-└── util/                      # DateUtils, SlugUtils
+└── service/                   # Domain services + NotificationDeliveryLogService,
+                               # PortalNotificationService, NotificationPreferenceService,
+                               # DepartmentScheduleService, AuditService, EncryptionService,
+                               # FileStorageService, BucketRateLimiterService
 
 src/main/resources/
-├── application.properties
-└── db/migration/
-    └── V1__create_users_and_auth.sql   # Flyway baseline
+└── application.properties
 ```
 
 ---
@@ -266,114 +335,116 @@ src/main/resources/
 
 ### Prerequisites
 
-- **JDK 17+**
-- **Maven 3.9+** (or use the bundled `mvnw` wrapper)
-- **PostgreSQL 14+** running locally or reachable over the network
+- JDK 17+
+- Maven 3.9+ (or bundled `mvnw`)
+- PostgreSQL 17 running locally
 
 ### Clone & build
 
 ```bash
-git clone https://github.com/David-Jesse/grovers-hospital-backend.git
-cd grovers-hospital-backend
-./mvnw clean install            # macOS / Linux
-mvnw.cmd clean install          # Windows
+git clone https://github.com/grovershospital/grovers-backend.git
+cd grovers-backend
+mvnw.cmd clean install -DskipTests   # Windows
 ```
 
 ### Set up the database
 
 ```sql
 CREATE DATABASE grover_hospital;
-CREATE USER grover WITH ENCRYPTED PASSWORD 'change_me';
-GRANT ALL PRIVILEGES ON DATABASE grover_hospital TO grover;
 ```
 
-Flyway will create the schema on first run.
+Hibernate is on `validate` mode — **the schema must exist before the app starts.** Run the hand-written migration SQL files in `sql/` against the database first. There is no auto-DDL.
 
 ### Run
 
 ```bash
-./mvnw spring-boot:run
+mvnw.cmd spring-boot:run
 ```
 
-The API starts on `http://localhost:8080` by default. Swagger UI is at `http://localhost:8080/swagger-ui.html`.
+The API starts on `http://localhost:8080/api/v1`. Swagger UI is at `http://localhost:8080/api/v1/swagger-ui.html`.
 
 ---
 
 ## Configuration
 
-Configuration lives in `src/main/resources/application.properties`. Override via environment variables, a profile-specific properties file, or command-line flags.
+All configuration lives in `application.properties`. In production, sensitive values are injected as environment variables backed by Google Secret Manager.
 
-Key properties (names may differ slightly — see the file for the source of truth):
+| Property | Purpose |
+|---|---|
+| `spring.datasource.url` | PostgreSQL JDBC URL |
+| `spring.datasource.username` / `password` | Database credentials |
+| `spring.jpa.hibernate.ddl-auto=validate` | Hibernate validates schema only — never modifies it |
+| `app.jwt.secret` | HS512 signing key |
+| `app.jwt.access-token-expiration` | Access token lifetime (ms) |
+| `app.jwt.refresh-token-expiration` | Refresh token lifetime (ms) |
+| `app.upload.dir` | File storage root (`/app/uploads` on Cloud Run, Cloud Storage mounted) |
+| `app.encryption.master-key` | AES-256-GCM master key for file encryption |
+| `app.cors.allowed-origins` | Comma-separated frontend origins |
+| `app.hospital.name` | Used in notification templates |
+| `app.hospital.notification-email` | Hospital inbox for admin alerts |
+| `app.hospital.contact-phone` | Shown in patient-facing notifications |
+| `app.hospital.contact-email` | Shown in patient-facing notifications |
+| `app.frontend.base-url` | Frontend root URL (used in reset links, portal links) |
+| `app.notification.whatsapp.provider` | `console` (dev) or `meta` (production) |
+| `app.whatsapp.access-token` | Meta Cloud API access token |
+| `app.whatsapp.phone-number-id` | Meta phone number ID |
+| `app.whatsapp.waba-id` | WhatsApp Business Account ID |
+| `app.notification.events.*` | Per-event per-channel toggle flags |
 
-| Property                        | Purpose                                                     |
-|---------------------------------|-------------------------------------------------------------|
-| `spring.datasource.url`         | PostgreSQL JDBC URL                                         |
-| `spring.datasource.username`    | Database user                                               |
-| `spring.datasource.password`    | Database password                                           |
-| `spring.jpa.hibernate.ddl-auto` | Should be `validate` in any shared environment (Flyway owns the schema) |
-| `app.jwt.secret`                | HMAC signing key for JWTs — must be a strong, secret value  |
-| `app.jwt.access-token-expiration`  | Access token lifetime (ms)                              |
-| `app.jwt.refresh-token-expiration` | Refresh token lifetime (ms)                             |
-| `app.upload.dir`                | Local directory for encrypted result files and image uploads |
-| `app.encryption.secret`         | Symmetric key used by `EncryptionService`                   |
-| `spring.servlet.multipart.max-file-size` | Per-file upload cap                                |
-| `spring.servlet.multipart.max-request-size` | Per-request upload cap                          |
-
-> **Never commit real secrets.** Use environment variables (`SPRING_DATASOURCE_PASSWORD`, `APP_JWT_SECRET`, `APP_ENCRYPTION_SECRET`, etc.) or a secret manager in any deployed environment.
-
-### CORS
-
-`CorsConfig` controls which origins may call the API. Update it to match your frontend's deployed URL before going live.
+> **Never commit real secrets.** Use environment variables for all credentials in any deployed environment.
 
 ---
 
 ## Database Migrations
 
-Schema changes are managed by **Flyway**. Migrations live in `src/main/resources/db/migration/` and are applied automatically on application startup.
+Hibernate is set to `validate` — it checks that the schema matches the entities on startup and refuses to start if anything is missing. This means:
 
-Convention: `V<n>__<snake_case_description>.sql` (e.g. `V2__add_booking_indexes.sql`). Never edit a migration after it's been applied to a shared environment — add a new one instead.
+- Schema changes **must be applied manually** via psql before deploying a new JAR.
+- Migration SQL files live in `sql/` and are numbered (`V18__department_schedule.sql`, `V19__booking_appointment_time.sql`, etc.).
+- The Cloud SQL Auth Proxy is used to connect to production Cloud SQL from a local machine.
 
-The current baseline is `V1__create_users_and_auth.sql`, which sets up the patient/admin tables and supporting auth structures. Remaining tables are currently created from JPA entity metadata; future migrations should formalise them as the schema stabilises.
+**Never deploy a new JAR without running the corresponding SQL migration first.**
 
 ---
 
-## Running Tests
+## Deployment
 
-```bash
-./mvnw test
+The backend is deployed to **Google Cloud Run** as a container built from source by Cloud Build.
+
+### Deploy command (PowerShell — single line)
+
+```powershell
+gcloud run deploy grover-hospital --source . --region europe-west2 --project scrapper-464819
 ```
 
-The current test suite contains the default Spring Boot context-load test (`GroverHospitalApplicationTests`). Test dependencies for `spring-boot-starter-data-jpa-test` and `spring-boot-starter-security-test` are already on the classpath, ready for the planned controller, repository, and security test layers.
+### Infrastructure
+
+| Resource | Details |
+|---|---|
+| Cloud Run service | `grover-hospital`, region `europe-west2` |
+| Cloud SQL | `grovers-db`, PostgreSQL 17, region `europe-west2` |
+| Cloud Storage | `gs://grovers-hospital-uploads` (volume-mounted at `/app/uploads`) |
+| Artifact Registry | `europe-west2-docker.pkg.dev/scrapper-464819/grovers-images/grover-hospital` |
+| Secret Manager | `db-password`, `jwt-secret`, `encryption-master-key`, `smtp-password`, `whatsapp-access-token`, `whatsapp-phone-number-id`, `whatsapp-waba-id` |
+
+### Deployment checklist
+
+1. Run any new SQL migration files against Cloud SQL via the Auth Proxy
+2. Confirm `mvn clean package` returns `BUILD SUCCESS` locally
+3. Run the deploy command above
+4. Verify new endpoints appear in Swagger UI on the live URL
+5. Smoke-test critical paths in Postman
 
 ---
 
 ## API Documentation
 
-`springdoc-openapi` generates an OpenAPI 3 spec automatically from the controller layer.
+springdoc-openapi generates an OpenAPI 3 spec automatically from the controller layer. A JWT bearer security scheme is configured via `OpenApiConfig`.
 
-- **Interactive UI:** `http://localhost:8080/swagger-ui.html`
-- **Raw spec:** `http://localhost:8080/v3/api-docs`
-
----
-
-## Roadmap
-
-Work that's planned or in progress:
-
-- **Test coverage** — repository slice tests (`@DataJpaTest`), controller tests (`@WebMvcTest`), and end-to-end security tests for the JWT filter and role-scoped endpoints.
-- **Production notification senders** — replace `Console*` senders with real SMTP, SMS, and WhatsApp implementations behind the same interfaces.
-- **Result-ready notifications** — wire `POST /admin/results/{id}/notify` through the production email/SMS path.
-- **Flyway migrations for full schema** — move the remaining tables from JPA-managed DDL to versioned migrations.
-- **Cleanup** — remove the unused `PackageRepository` and the misspelled `FeedbackRespository` (a duplicate of `FeedbackRepository`).
-- **Refresh token storage & revocation** — server-side token tracking for logout / forced revocation.
-- **Rate limiting** on `/auth/*` and public form-submission endpoints.
+- **Interactive UI:** `https://<service-url>/api/v1/swagger-ui.html`
+- **Raw spec:** `https://<service-url>/api/v1/api-docs`
 
 ---
 
-## License
-
-Proprietary. All rights reserved. No license is granted for use, copying, modification, or distribution of this codebase without explicit written permission from the author.
-
----
-
-*Maintainer:* [David-Jesse](https://github.com/David-Jesse)
+*Maintainer:* [David-Jesse](https://github.com/David-Jesse)  
+*Client:* Grover's Hospital and Lifestyle Clinic, 81A Younis Bashorun Street, Victoria Island, Lagos
