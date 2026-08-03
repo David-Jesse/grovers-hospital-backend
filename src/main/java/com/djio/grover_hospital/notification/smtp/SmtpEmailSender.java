@@ -55,14 +55,12 @@ public class SmtpEmailSender implements EmailSender {
             mailSender.send(mimeMessage);
 
             String messageId = mimeMessage.getMessageID();
-            log.info("SMTP send OK to={} subject='{}' messageId={}",
-                    message.getTo(), message.getSubject(), messageId);
+            log.info("SMTP accepted an email submission; messageId={}", messageId);
             return SendResult.success(messageId);
 
         } catch (MailException | MessagingException | UnsupportedEncodingException e) {
-            log.error("SMTP send failed to={} subject='{}': {}",
-                    message.getTo(), message.getSubject(), e.getMessage(), e);
-            return SendResult.failure(e.getMessage());
+            log.error("SMTP email submission failed; exceptionType={}", e.getClass().getSimpleName());
+            return SendResult.failure("SMTP email submission failed");
         }
     }
 }

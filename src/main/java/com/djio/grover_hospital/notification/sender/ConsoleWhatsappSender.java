@@ -11,30 +11,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class ConsoleWhatsappSender implements WhatsappSender {
 
-    private static final String SEPARATOR = "─────────────────────────────────────────────";
-
     @Override
     public SendResult send(WhatsappMessage message) {
-        StringBuilder out = new StringBuilder("\n").append(SEPARATOR).append("\n");
-        out.append("📱  WHATSAPP (console)\n").append(SEPARATOR).append("\n");
-        out.append("To:        ").append(message.getToPhoneNumber()).append("\n");
-
-        if (message.getTemplateName() != null) {
-            out.append("Template:  ").append(message.getTemplateName()).append("\n");
-            if (message.getTemplateParams() != null && !message.getTemplateParams().isEmpty()) {
-                out.append("Params:    ").append(message.getTemplateParams()).append("\n");
-            }
-        }
-
-        if (message.getText() != null && !message.getText().isBlank()) {
-            out.append("Text:\n").append(message.getText()).append("\n");
-        }
-        out.append(SEPARATOR).append("\n");
-
-        log.info(out.toString());
-
-        // Return a synthetic success so sendAndLog has something to write to the delivery log.
-        // Use a "console-" prefix so it's obvious in logs the message didn't actually leave the system.
+        log.info("Console WhatsApp submission accepted (delivery suppressed)");
         return SendResult.success("console-" + System.currentTimeMillis());
     }
 }

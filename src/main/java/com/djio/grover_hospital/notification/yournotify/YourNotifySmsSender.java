@@ -83,18 +83,16 @@ public class YourNotifySmsSender implements SmsSender {
                     .body(Map.class);
 
             String campaignId = extractCampaignId(response);
-            log.info("YourNotify SMS sent to={} campaignId={}", recipient, campaignId);
+            log.info("YourNotify accepted an SMS submission; campaignId={}", campaignId);
             return SendResult.success(campaignId);
 
         } catch (RestClientResponseException e) {
-            // 4xx / 5xx with a body — log the response so we can debug field-name issues
-            log.error("YourNotify SMS rejected for to={} status={} body={}",
-                    recipient, e.getStatusCode(), e.getResponseBodyAsString());
-            return SendResult.failure("HTTP " + e.getStatusCode() + ": " + e.getResponseBodyAsString());
+            log.error("YourNotify rejected an SMS submission with HTTP {}", e.getStatusCode().value());
+            return SendResult.failure("YourNotify SMS request failed with HTTP " + e.getStatusCode().value());
 
         } catch (Exception e) {
-            log.error("YourNotify SMS failed for to={}: {}", recipient, e.getMessage(), e);
-            return SendResult.failure(e.getMessage());
+            log.error("YourNotify SMS submission failed; exceptionType={}", e.getClass().getSimpleName());
+            return SendResult.failure("YourNotify SMS submission failed");
         }
     }
 

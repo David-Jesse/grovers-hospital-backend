@@ -122,6 +122,7 @@ public class DefaultNotificationService implements NotificationService {
                     DeliveryChannel.EMAIL, patient.getEmail(),
                     () -> emailSender.send(EmailMessage.builder()
                             .to(patient.getEmail())
+                            .recipientName(patientRecipientName(patient))
                             .subject("Booking Received — #" + booking.getId())
                             .textBody(buildBookingConfirmationEmailBody(booking))
                             .build()));
@@ -173,6 +174,7 @@ public class DefaultNotificationService implements NotificationService {
 
         sendSafely("booking-alert-email", () -> emailSender.send(EmailMessage.builder()
                 .to(hospitalEmail)
+                .recipientName(hospitalName)
                 .subject("New Booking — #" + booking.getId() + " — " + patient.getFirstName() + " " + patient.getLastName())
                 .textBody(buildBookingAlertEmailBody(booking))
                 .build()));
@@ -203,6 +205,7 @@ public class DefaultNotificationService implements NotificationService {
         Patient patient = booking.getPatient();
         Long patientId = patient.getId();
         NotificationEvent event = NotificationEvent.BOOKING_STATUS_UPDATE;
+        boolean phonePresent = hasPhone(patient);
 
         if (statusUpdateEmail
                 && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.EMAIL)) {
@@ -211,13 +214,18 @@ public class DefaultNotificationService implements NotificationService {
                     DeliveryChannel.EMAIL, patient.getEmail(),
                     () -> emailSender.send(EmailMessage.builder()
                             .to(patient.getEmail())
+                            .recipientName(patientRecipientName(patient))
                             .subject("Booking Update — #" + booking.getId() + " — " + booking.getStatus().name())
                             .textBody(buildStatusUpdateEmailBody(booking))
                             .build()));
         }
 
-        if (statusUpdateSms && hasPhone(patient)
-                && notificationPreferenceService.shouldSend(patientId, event, NotificationChannel.SMS)) {
+        Boolean smsPreferenceEnabled = null;
+        if (statusUpdateSms && phonePresent) {
+            smsPreferenceEnabled = notificationPreferenceService.shouldSend(
+                    patientId, event, NotificationChannel.SMS);
+        }
+        if (statusUpdateSms && phonePresent && Boolean.TRUE.equals(smsPreferenceEnabled)) {
             sendAndLog("booking-status-sms",
                     patientId, "BOOKING_STATUS_UPDATE", "BOOKING", booking.getId(),
                     DeliveryChannel.SMS, patient.getPhone(),
@@ -267,6 +275,7 @@ public class DefaultNotificationService implements NotificationService {
                     DeliveryChannel.EMAIL, patient.getEmail(),
                     () -> emailSender.send(EmailMessage.builder()
                             .to(patient.getEmail())
+                            .recipientName(patientRecipientName(patient))
                             .subject("Reminder: your appointment is tomorrow — #" + booking.getId())
                             .textBody(buildReminderEmailBody(booking))
                             .build()));
@@ -434,6 +443,7 @@ public class DefaultNotificationService implements NotificationService {
                     DeliveryChannel.EMAIL, patient.getEmail(),
                     () -> emailSender.send(EmailMessage.builder()
                             .to(patient.getEmail())
+                            .recipientName(patientRecipientName(patient))
                             .subject("Appointment time updated — #" + booking.getId())
                             .textBody(emailBody)
                             .build()));
@@ -725,8 +735,10 @@ public class DefaultNotificationService implements NotificationService {
 
                   "%s"
 
+                Requested date: %s
+
                 Please log in to view it. For questions about your result,
-                contact us at %s.
+                contact us at %s or call %s.
 
                 — %s
                 """.formatted(patient.getFirstName(), resultTitle, requestedDate.format(DATE_FMT), contactEmail, contactPhone, hospitalName);
@@ -745,6 +757,18 @@ public class DefaultNotificationService implements NotificationService {
     }
 
     // ===== Helpers =====
+
+    private static String patientRecipientName(Patient patient) {
+        String firstName = patient.getFirstName();
+        String lastName = patient.getLastName();
+        if (firstName == null || firstName.isBlank()) {
+            return lastName;
+        }
+        if (lastName == null || lastName.isBlank()) {
+            return firstName;
+        }
+        return firstName.trim() + " " + lastName.trim();
+    }
 
     private boolean hasPhone(Patient patient) {
         return patient.getPhone() != null && !patient.getPhone().isBlank();

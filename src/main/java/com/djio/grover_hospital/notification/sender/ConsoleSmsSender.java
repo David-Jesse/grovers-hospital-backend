@@ -11,17 +11,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class ConsoleSmsSender implements SmsSender {
 
-    private static final String SEPARATOR = "─────────────────────────────────────────────";
-
     @Override
     public SendResult send(SmsMessage message) {
-        StringBuilder out = new StringBuilder("\n").append(SEPARATOR).append("\n");
-        out.append("💬  SMS (console)\n").append(SEPARATOR).append("\n");
-        out.append("To:    ").append(message.getToPhoneNumber()).append("\n");
-        out.append("Text:  ").append(message.getText()).append("\n");
-        out.append(SEPARATOR).append("\n");
-
-        log.info(out.toString());
+        log.info("Console SMS submission accepted (delivery suppressed)");
         return SendResult.success("console-" + java.util.UUID.randomUUID());
     }
 }

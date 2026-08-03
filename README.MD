@@ -232,7 +232,7 @@ NotificationService (interface)
        ▼
 DefaultNotificationService
        │
-       ├─ EmailSender      ← SmtpEmailSender       (production)
+       ├─ EmailSender      ← SendchampEmailSender  (production)
        ├─ SmsSender        ← YourNotifySmsSender    (production, YourNotify REST API)
        └─ WhatsappSender   ← MetaWhatsappSender     (production, Meta Cloud API)
                              ConsoleWhatsappSender  (default/dev, provider=console)
@@ -425,7 +425,7 @@ gcloud run deploy grover-hospital --source . --region europe-west2 --project scr
 | Cloud SQL | `grovers-db`, PostgreSQL 17, region `europe-west2` |
 | Cloud Storage | `gs://grovers-hospital-uploads` (volume-mounted at `/app/uploads`) |
 | Artifact Registry | `europe-west2-docker.pkg.dev/scrapper-464819/grovers-images/grover-hospital` |
-| Secret Manager | `db-password`, `jwt-secret`, `encryption-master-key`, `smtp-password`, `whatsapp-access-token`, `whatsapp-phone-number-id`, `whatsapp-waba-id` |
+| Secret Manager | `db-password`, `jwt-secret`, `encryption-master-key`, `sendchamp-access-key`, `smtp-password` (rollback), `whatsapp-access-token`, `whatsapp-phone-number-id`, `whatsapp-waba-id` |
 
 ### Deployment checklist
 
@@ -434,6 +434,8 @@ gcloud run deploy grover-hospital --source . --region europe-west2 --project scr
 3. Run the deploy command above
 4. Verify new endpoints appear in Swagger UI on the live URL
 5. Smoke-test critical paths in Postman
+
+For the SendChamp email rollout, secret creation, provider settings, smoke tests, and rollback are documented in [`docs/SENDCHAMP_PRODUCTION.md`](docs/SENDCHAMP_PRODUCTION.md).
 
 ---
 

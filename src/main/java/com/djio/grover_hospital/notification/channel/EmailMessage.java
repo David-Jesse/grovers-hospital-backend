@@ -16,6 +16,8 @@ import java.util.List;
 @AllArgsConstructor
 public class EmailMessage {
     private final String to;
+    /** Optional display name for providers that support named recipients. */
+    private final String recipientName;
     @Singular private final List<String> ccs;   // exposed as getCcs()/getCc() below
     @Singular private final List<String> bccs;
     private final String subject;
